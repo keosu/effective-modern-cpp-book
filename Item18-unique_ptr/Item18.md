@@ -1,5 +1,5 @@
 # Item 18: 使用srd::unique_ptr来管理独占所有权的资源
-http://blog.csdn.net/boydfd/article/details/50637260
+
 
 本文翻译自modern effective C++，由于水平有限，故无法保证翻译完全正确，欢迎指出错误。谢谢！
 博客已经迁移到这里啦

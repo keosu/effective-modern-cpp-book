@@ -1,6 +1,6 @@
 # Item 20: 使用std::weak_ptr替换会造成指针悬挂的类std::shared_ptr指针
 
-http://blog.csdn.net/boydfd/article/details/50637267
+
 
 ## weak_ptr的构造
 矛盾的是，我们很容易就能创造出一个和std::shared_ptr类似的智能指针，但是，它们不参加被指向资源的共享所有权管理。换句话说，这是一个行为像std::shared_ptr，但却不影响对象引用计数的指针。这样的智能指针需要与一个对std::shared_ptr来说不存在的问题做斗争：它指向的东西可能已经被销毁了。一个真正的智能指针需要通过追踪资源的悬挂（也就是说，被指向的对象不存在时）来解决这个问题。std::weak_ptr正好就是这种智能指针。

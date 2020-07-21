@@ -1,5 +1,5 @@
 # Item 21: 比起直接使用new优先使用std::make_unique和std::make_shared
-http://blog.csdn.net/boydfd/article/details/50637270
+
 
 
 让我们先从std::make_unique和std::make_shared的对比开始吧。std::make_shared是C++11的部分，但是，不幸的是，std::make_unique不是。它是在c++14中才被加入到标准库的。如果你使用的是C++11，不要怕，因为一个std::make_unique的基础版本很容易写。看这里：

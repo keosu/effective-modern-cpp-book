@@ -1,5 +1,5 @@
 # item 23: 理解std::move和std::forward
-http://blog.csdn.net/boydfd/article/details/50822092
+
 
 根据std::move和std::forward不能做什么来熟悉它们是一个好办法。std::move没有move任何东西，std::forward没有转发任何东西。在运行期，它们没有做任何事情。它们没有产生需要执行的代码，一byte都没有。
 

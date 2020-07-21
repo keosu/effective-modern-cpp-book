@@ -1,6 +1,6 @@
 # Item 19: 使用srd::shared_ptr来管理共享所有权的资源
 2016-02-05 10:54 862人阅读 评论(0) 收藏 举报
-http://blog.csdn.net/boydfd/article/details/50637265
+
 
 本文翻译自《effective modern C++》，由于水平有限，故无法保证翻译完全正确，欢迎指出错误。谢谢！
 博客已经迁移到这里啦

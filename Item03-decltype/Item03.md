@@ -1,5 +1,5 @@
 # Item 3: 理解decltype
-http://blog.csdn.net/boydfd/article/details/50637121
+
 
 
 decltype是一个奇怪的东西。给出一个名字或者一个表达式，decltype可以告诉你名字或表达式的类型。大多情况下，他告诉你的就是确实你想的那样。但是偶尔，他会提供一个脱离你想象的结果，这导致了你必须去找一本参考书或者去在线Q&A网站寻求答案。

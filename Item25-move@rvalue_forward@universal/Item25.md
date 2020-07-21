@@ -1,5 +1,5 @@
 # Item 25: 对右值引用使用std::move，对universal引用则使用std::forward
-http://blog.csdn.net/boydfd/article/details/50865400
+
 
 
 右值引用只能绑定那些有资格被move的对象上去。如果你有一个右值引用类型的参数，你就知道这个被绑定的对象可以被move：
