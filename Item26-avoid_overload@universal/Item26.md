@@ -3,7 +3,7 @@ http://blog.csdn.net/boydfd/article/details/50991219
 
 如果你需要写一个以名字作为参数，并记录下当前日期和时间的函数，在函数中还要把名字添加到全局的数据结构中去的话。你可能会想出看起来像这样的一个函数：
 
-```
+```cpp
 std::multiset<std::string> names;            // 全局数据结构
 
 void logAndAdd(const std::string& name)
@@ -19,7 +19,7 @@ void logAndAdd(const std::string& name)
 ```
 这段代码并非不合理，只是它可以变得更加有效率。考虑三个可能的调用：
 
-```
+```cpp
 std::string petName("Darla");
 logAndAdd(petName);                     // 传入一个std::string左值
 
@@ -35,7 +35,7 @@ logAndAdd("Patty Dog");                 // 传入字符串
 
 我们能通过重写logAndAdd来消除第二个以及第三个调用的低效性。我们使logAndAdd以一个universal引用（看Item24）为参数，并且根据Item 25，再把这个引用std::forward（转发）给emplace。结果就是下面的代码了：
 
-```
+```cpp
 templace<typename T>
 void logAndAdd(T&& name)
 {
@@ -60,7 +60,7 @@ logAndAdd("Patty Dog");                 // 在multiset内部创建
 
 如果这是故事的结尾，我能就此打住很自豪地离开了，但是我还没告诉你客户端并不是总能直接访问logAndAdd所需要的name。一些客户端只有一个索引值，这个索引值可以让logAndAdd用来在表中查找相应的name。为了支持这样的客户端，logAndAdd被重载了：
 
-```
+```cpp
 std::string nameFromIdx(int idx);       // 返回对应于idx的name
 
 void logAndAdd(int idx)                 // 新的重载
@@ -72,7 +72,7 @@ void logAndAdd(int idx)                 // 新的重载
 ```
 对于两个重载版本的函数，调用的决议（决定调用哪个函数）结果就同我们所期待的一样：
 
-```
+```cpp
 std::string petName("Darla");           // 和之前一样
 
 logAndAdd(petName);                     // 和之前一样，这些函数
@@ -83,7 +83,7 @@ logAndAdd(22);                          // 调用int版本的重载
 ```
 事实上，决议结果能符合期待只有当你不期待太多时才行。假设一个客户端有一个short类型的索引，并把它传给了logAndAdd：
 
-```
+```cpp
 short nameIdx;
 ...                                     // 给nameIdx一个值
 
@@ -99,7 +99,7 @@ logAndAdd(nameIdx);                     // 错误！
 
 一个简单的让事情变复杂的办法就是写一个完美转发的构造函数。一个对logAndAdd例子中的小改动能说明这个问题。比起写一个以std::string或索引（能用来查看一个std::string）为参数的函数，我们不如写一个能做同样事情的Person类：
 
-```
+```cpp
 class Person {
 publci:
     template<typename T>
@@ -115,7 +115,7 @@ private:
 ```
 就和logAndAdd中的情况一样，传一个除了int外的整形类型（比如，std::size_t, short, long）将不会调用int版本的构造函数，而是调用universal引用版本的构造函数，然后这将导致编译失败。但是这里的问题更加糟糕，因为除了我们能看到的以外，这里还有别的重载出现在Person中。Item 17解释了在适当的条件下，C++将同时产生拷贝和move构造函数，即使类中包含一个能实例化出同拷贝或move构造函数同样函数签名的模板构造函数，它还是会这么做。因此，如果Person的拷贝和move构造函数被产生出来了，Person实际上看起来应该像是这样：
 
-```
+```cpp
 class Person {
 public:
     template<typename T>                    
@@ -144,7 +144,7 @@ auto cloneOfP(p);               // 从p创建一个新的Person
 
 编译器的理由如下：cloneOfP被用一个非const左值（p）初始化，并且这意味着模板化的构造函数能实例化出一个以非const左值类型为参数的Person构造函数。在这个实例化过后，Person类看起来像这样：
 
-```
+```cpp
 class Person {
 public:
     explicit Person(Person& n)              // 从完美转发构造函数
@@ -159,21 +159,21 @@ public:
 ```
 在语句
 
-```
+```cpp
 auto cloneOfP(p);
 ```
 中，p既能被传给拷贝构造函数也能被传给实例化的模板。调用拷贝构造函数将需要把const加到p上去来匹配拷贝构造函数的参数类型，但是调用实例化的模板不需要这样的条件。因此产生自模板的版本是更佳的匹配，所以编译器做了它们该做的事：调用更匹配的函数。因此，“拷贝”一个Person类型的非const左值会被完美转发构造函数处理，而不是拷贝构造函数。
 
 如果我们稍微改变一下例子，使得要被拷贝的对象是const的，我们将得到一个完全不同的结果：
 
-```
+```cpp
 const Person cp("Nancy");       // 对象现在是const的
 
 auto cloneOfP(cp);              // 调用拷贝构造函数！
 ```
 因为被拷贝的对象现在是const的，它完全匹配上拷贝构造函数的参数。模板化的构造函数能被实例化成有同样签名的函数，
 
-```
+```cpp
 class Person {
 public:
     explicit Person(const Person& n);       //从模板实例化出来
@@ -189,7 +189,7 @@ public:
 
 当继承介入其中时，完美转发构造函数、编译器产生的拷贝和move构造函数之间的关系将变得更加扭曲。尤其是传统的派生类对于拷贝和move操作的实现将变得很奇怪，让我们来看一下：
 
-```
+```cpp
 class SpecialPerson: public Person {
 public:
     SpecialPerson(const SpecialPerson& rhs)     // 拷贝构造函数，调用

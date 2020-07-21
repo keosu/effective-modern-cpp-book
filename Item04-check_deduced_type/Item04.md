@@ -5,7 +5,7 @@
 ## IDE 编辑器
 
 在IDE中编辑代码常常能显示程序实体（比如，变量，参数，函数等）的类型，只需要你做一些像把光标放在实体上面之类的事。举个例子，给出这样的代码：
-```
+```cpp
 const int theAnswer = 42;
 
 auto x = theAnswer;
@@ -22,20 +22,20 @@ auto y = &theAnswer;
 这里有一个有效的方法，让编译器显示它推导的类型，那就是把这个类型用在会导致编译错误的地方。错误信息报告错误的时候常常会涉及到造成这个错误的类型。
 
 假设，为了举个例子，我们想看看之前例子中的x和y被推导成什么类型。我们可以先声明一个class template但是不去定义它。就好像这样漂亮的代码：
-```
+```cpp
 template<typename T>    //只是声明TD
 class TD;               //TD == type displayer
                         //类型显示器
 ```
 尝试实例化这个template将引起错误，因为我们没有相应的定义来实例化。为了看x和y的类型，只要使用它们的类型尝试实例化TD：
 
-```
+```cpp
 TD<decltype(x)> xType;  //引起错误，错误会包含
 TD<decltype(x)> yType;  //x和y的类型
 ```
 我使用variableNameType的形式来命名变量名字，因为它们在错误信息输出的时候出现，并帮我找到我要找的信息。对于上面的代码，我的其中一个编译器的一部分关于类型判断的输出就在下面（我已经高亮显示了类型信息）（译注：就是int和`const int *`）
 
-```
+```cpp
 error: aggregate 'TD<int> xType' has incomplete type and
     cannot be defined
 error: aggregate 'TD<const int *> yType' has incomplete type 
@@ -43,7 +43,7 @@ error: aggregate 'TD<const int *> yType' has incomplete type
 ```
 一个不同的编译器提供了相同的信息，但是以不同的形式显示：
 
-```
+```cpp
 error: 'xType' uses undefined class 'TD<int>'
 error: 'yType' uses undefined class 'TD<const int *>'
 ```
@@ -53,7 +53,7 @@ error: 'yType' uses undefined class 'TD<const int *>'
 
 直到运行期前，printf都不能显示类型信息（并不是说我推荐你使用printf），但是它提供对输出格式的所有控制。这里有个难点，就是如何把你想知道的类型用适合显示的文本来输出。你可能觉得，“没问题，typeid和std::type_info::name会拯救我们。”在我们接着探讨如何查看x和y的类型推导前，你可能觉得我们能像下面这样写：
 
-```
+```cpp
 std::cout<<typeid(x).name()<<'\n';  //显示x的y的类型
 std::cout<<typeid(y).name()<<'\n';
 ```
@@ -63,7 +63,7 @@ std::cout<<typeid(y).name()<<'\n';
 
 因为这些x和y的类型结果都是对的，你可能觉得类型显示的问题已经被解决了，但是别这么轻率。考虑下更加复杂的例子：
 
-```
+```cpp
 template<typename T>            //需要调用的template函数
 void f(const T& param);
 
@@ -80,7 +80,7 @@ if(!vw.empty()){
 
 使用粗糙的typeid是很直接的，只要加一些代码到f中来显示你想看的类型：
 
-```
+```cpp
 template<typename T>
 void f(cosnt T& param)
 {
@@ -99,7 +99,7 @@ param = PK6Widget
 
 微软的编译器同样：
 
-```
+```cpp
 T       = class Widget cosnt *
 param   = class Widget cosnt *   
 ```
@@ -108,7 +108,7 @@ param   = class Widget cosnt *
 很不幸，std::type_info::name的结果是不可靠的。在这种情况下，例子中的三个编译器对类型的解读都是错误的。另外，本质上，它们都应该要是错误的，因为std::type_info::name的说明书上说，传入的类型会以传值（by-value）的方式传入一个template函数。就像item 1解释的那样，这意味着如果类型是一个引用，他的引用属性会被忽略，并且在去掉引用属性后，是const（或volatile）的，它的const（或volatile）属性也会被忽略。这就是为什么param的类型（`cosnt Widget * const&`）被报告称`cosnt Widget*`。指针的引用属性和const属性都被消除了。
 
 同样不幸的是IDE显示的类型信息也是不可靠的，或者至少说是没有用处。在这个例子中，一个我知道的IDE编辑器报告T的类型是（我不是胡编乱造）：
-```
+```cpp
 
 cosnt
 std::Simple_types<std::Wrap_alloc<std::_Vec_base_types<Widget,
@@ -116,7 +116,7 @@ std::allocator<Widget> >::_Alloc>::value_type>::value_type *
 ```
 同样的IDE编辑器显示param的类型：
 
-```
+```cpp
 const std::_Simple_types<...>::value_type *const &
 ```
 这没有T的类型那么吓人，但是中间的“…”让你感到困惑，除非你了解到，这个IDE编辑器说出“我省略所有的T表示的东西”。如果运气好的话，你的开发环境会做一个更好的工作。
@@ -126,7 +126,7 @@ const std::_Simple_types<...>::value_type *const &
 
 这里给出我们的函数f怎么用Boost.TypeIndex产出正确的类型信息：
 
-```
+```cpp
 #include <boost/type_index.hpp>
 template<typename T>
 void f(const T& param)
@@ -148,7 +148,7 @@ void f(const T& param)
 
 用这个f的实现，再看看那个用typeid会对param产生错误类型信息的函数调用：
 
-```
+```cpp
 std::vector<Widget> createVec();
 
 cosnt auto vw = createVec();
@@ -160,13 +160,13 @@ if(!vw.empty()){
 ```
 在GNU和Clang编译器下，Boost.TypeIndex 产生这个（准确的）输出：
 
-```
+```cpp
 T       = Widget const*
 param   = Widget const* const&
 ```
 微软的编译器产生的结果本质上是相同的：
 
-```
+```cpp
 T       = class Widget const*
 param   = class Widget const* const&
 ```

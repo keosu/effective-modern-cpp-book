@@ -3,7 +3,7 @@ One of the features most prominently emblazoned on the C++11 box is perfect for�
 Before embarking on our epsilon exploration, it’s worthwhile to review what’s meant by “perfect forwarding.” “Forwarding” just means that one function passes—forwards —its parameters to another function. The goal is for the second function (the one being forwarded to) to receive the same objects that the first function (the one doing the forwarding) received. That rules out by-value parameters, because they’re copies of what the original caller passed in. We want the forwarded-to function to be able to work with the originally-passed-in objects. Pointer parameters are also ruled out, because we don’t want to force callers to pass pointers. When it comes to general- purpose forwarding, we’ll be dealing with parameters that are references.
 Perfect forwarding means we don’t just forward objects, we also forward their salient characteristics: their types, whether they’re lvalues or rvalues, and whether they’re const or volatile. In conjunction with the observation that we’ll be dealing with reference parameters, this implies that we’ll be using universal references (see Item 24), because only universal reference parameters encode information about the lvalueness and rvalueness of the arguments that are passed to them.
 Let’s assume we have some function f, and we’d like to write a function (in truth, a function template) that forwards to it. The core of what we need looks like this:
-```
+```cpp
 template<typename T>
 void fwd(T&& param)                  // accept any argument
 {
@@ -11,7 +11,7 @@ void fwd(T&& param)                  // accept any argument
 }
 ```
 Forwarding functions are, by their nature, generic. The fwd template, for example, accepts any type of argument, and it forwards whatever it gets. A logical extension of this genericity is for forwarding functions to be not just templates, but variadic tem‐ plates, thus accepting any number of arguments. The variadic form for fwd looks like this:
-```
+```cpp
 template<typename... Ts>
 void fwd(Ts&&... params)             // accept any arguments
 {
@@ -20,7 +20,7 @@ void fwd(Ts&&... params)             // accept any arguments
 ```
 This is the form you’ll see in, among other places, the standard containers’ emplace‐ ment functions (see Item 42) and the smart pointer factory functions, std::make_shared and std::make_unique (see Item 21).
 Given our target function f and our forwarding function fwd, perfect forwarding fails if calling f with a particular argument does one thing, but calling fwd with the same argument does something different:
-```
+```cpp
 f( expression );      // if this does one thing,
 fwd( expression );    // but this does something else, fwd fails
                       // to perfectly forward expression to f
@@ -29,16 +29,16 @@ Several kinds of arguments lead to this kind of failure. Knowing what they are a
 
 ## Braced initializers
 Suppose f is declared like this:
-```
+```cpp
 void f(const std::vector<int>& v);
 ```
 In that case, calling f with a braced initializer compiles,
-```
+```cpp
 f({ 1, 2, 3 });       // fine, "{1, 2, 3}" implicitly
                       // converted to std::vector<int>
 ```
 but passing the same braced initializer to fwd doesn’t compile: 
-```
+```cpp
 fwd({ 1, 2, 3 });   // error! doesn't compile
 ```
 That’s because the use of a braced initializer is a perfect forwarding failure case.
@@ -51,7 +51,7 @@ they compare the deduced types to f’s parameter declarations. Perfect forwardi
 
 In the “fwd({1,2,3})” call above, the problem is that passing a braced initializer to a function template parameter that’s not declared to be a std::initial izer_list is decreed to be, as the Standard puts it, a “non-deduced context.” In plain English, that means that compilers are forbidden from deducing a type for the expression { 1, 2, 3 } in the call to fwd, because fwd’s parameter isn’t declared to be a std::initializer_list. Being prevented from deducing a type for fwd’s parame‐ ter, compilers must understandably reject the call.
 Interestingly, Item 2 explains that type deduction succeeds for auto variables initial‐ ized with a braced initializer. Such variables are deemed to be std::initial izer_list objects, and this affords a simple workaround for cases where the type the forwarding function should deduce is a std::initializer_list—declare a local variable using auto, then pass the local variable to the forwarding function:
-```
+```cpp
     auto il = { 1, 2, 3 };      // il's type deduced to be
                                 // std::initializer_list<int>
     fwd(il);                    // fine, perfect-forwards il to f 
@@ -62,7 +62,7 @@ Item 8 explains that when you try to pass 0 or NULL as a null pointer to a templ
 
 ## Declaration-only integral static const data members
 As a general rule, there’s no need to define integral static const data members in classes; declarations alone suffice. That’s because compilers perform const propaga‐ tion on such members’ values, thus eliminating the need to set aside memory for them. For example, consider this code:
-```
+```cpp
 class Widget {
 public:
   static const std::size_t MinVals = 28; // MinVals' declaration
@@ -75,15 +75,15 @@ widgetData.reserve(Widget::MinVals);     // use of MinVals
 ```
 Here, we’re using Widget::MinVals (henceforth simply MinVals) to specify widget Data’s initial capacity, even though MinVals lacks a definition. Compilers work around the missing definition (as they are required to do) by plopping the value 28 into all places where MinVals is mentioned. The fact that no storage has been set aside for MinVals’ value is unproblematic. If MinVals’ address were to be taken (e.g., if somebody created a pointer to MinVals), then MinVals would require storage (so that the pointer had something to point to), and the code above, though it would compile, would fail at link-time until a definition for MinVals was provided.
 With that in mind, imagine that f (the function fwd forwards its argument to) is declared like this:
-```
+```cpp
    void f(std::size_t val);
 ```
 Calling f with MinVals is fine, because compilers will just replace MinVals with its value:
-```
+```cpp
 f(Widget::MinVals); // fine, treated as "f(28)" 
 ```
 Alas, things may not go so smoothly if we try to call f through fwd:
-```
+```cpp
 fwd(Widget::MinVals); // error! shouldn't link
 ```
 This code will compile, but it shouldn’t link. If that reminds you of what happens if we write code that takes MinVals’ address, that’s good, because the underlying prob‐ lem is the same.
@@ -91,34 +91,34 @@ Although nothing in the source code takes MinVals’ address, fwd’s parameter 
 pointers and references are essentially the same thing. At this level, there’s truth to the adage that references are simply pointers that are automatically dereferenced. That being the case, passing MinVals by reference is effectively the same as passing it by pointer, and as such, there has to be some memory for the pointer to point to. Passing integral static const data members by reference, then, generally requires that they be defined, and that requirement can cause code using perfect forwarding to fail where the equivalent code without perfect forwarding succeeds.
 But perhaps you noticed the weasel words I sprinkled through the preceding discus‐ sion. The code “shouldn’t” link. References are “usually” treated like pointers. Passing integral static const data members by reference “generally” requires that they be defined. It’s almost like I know something I don’t really want to tell you...
 That’s because I do. According to the Standard, passing MinVals by reference requires that it be defined. But not all implementations enforce this requirement. So, depending on your compilers and linkers, you may find that you can perfect-forward integral static const data members that haven’t been defined. If you do, congratu‐ lations, but there is no reason to expect such code to port. To make it portable, sim‐ ply provide a definition for the integral static const data member in question. For MinVals, that’d look like this:
-```
+```cpp
    const std::size_t Widget::MinVals;     // in Widget's .cpp file
 ```
 Note that the definition doesn’t repeat the initializer (28, in the case of MinVals). Don’t stress over this detail, however. If you forget and provide the initializer in both places, your compilers will complain, thus reminding you to specify it only once.
 
 ## Overloaded function names and template names
 Suppose our function f (the one we keep wanting to forward arguments to via fwd) can have its behavior customized by passing it a function that does some of its work. Assuming this function takes and returns ints, f could be declared like this:
-```
+```cpp
 void f(int (*pf)(int)); // pf = "processing function"
 ```
 It’s worth noting that f could also be declared using a simpler non-pointer syntax. Such a declaration would look like this, though it’d have the same meaning as the declaration above:
-```
+```cpp
 void f(int pf(int)); // declares same f as above Either way, now suppose we have an overloaded function, processVal:
    int processVal(int value);
    int processVal(int value, int priority);
 ```
 We can pass processVal to f,
-```
+```cpp
    f(processVal);                  // fine
 ```
 but it’s something of a surprise that we can. f demands a pointer to a function as its argument, but processVal isn’t a function pointer or even a function, it’s the name of two different functions. However, compilers know which processVal they need: the one matching f’s parameter type. They thus choose the processVal taking one int, and they pass that function’s address to f.
 What makes this work is that f’s declaration lets compilers figure out which version of processVal is required. fwd, however, being a function template, doesn’t have any information about what type it needs, and that makes it impossible for compilers to determine which overload should be passed:
-```
+```cpp
 fwd(processVal); // error! which processVal?
 ```
 processVal alone has no type. Without a type, there can be no type deduction, and without type deduction, we’re left with another perfect forwarding failure case.
 The same problem arises if we try to use a function template instead of (or in addi‐ tion to) an overloaded function name. A function template doesn’t represent one function, it represents many functions:
-```
+```cpp
 template<typename T>
 T workOnVal(T param)        // template for processing values
 { … }
@@ -126,7 +126,7 @@ fwd(workOnVal);             // error! which workOnVal
                             // instantiation?
 ```
 The way to get a perfect-forwarding function like fwd to accept an overloaded func‐ tion name or a template name is to manually specify the overload or instantiation you want to have forwarded. For example, you can create a function pointer of the same type as f’s parameter, initialize that pointer with processVal or workOnVal (thus causing the proper version of processVal to be selected or the proper instan‐ tiation of workOnVal to be generated), and pass the pointer to fwd:
-```
+```cpp
 using ProcessFuncType =                        // make typedef;
   int (*)(int);                                // see Item 9
 ProcessFuncType processValPtr = processVal;    // specify needed
@@ -139,7 +139,7 @@ Of course, this requires that you know the type of function pointer that fwd is 
 
 ## Bitfields
 The final failure case for perfect forwarding is when a bitfield is used as a function argument. To see what this means in practice, observe that an IPv4 header can be modeled as follows:3
-```
+```cpp
    struct IPv4Header {
      std::uint32_t version:4,
                    IHL:4,
@@ -149,14 +149,14 @@ The final failure case for perfect forwarding is when a bitfield is used as a fu
 ... };
 ```
 If our long-suffering function f (the perennial target of our forwarding function fwd) is declared to take a std::size_t parameter, calling it with, say, the totalLength field of an IPv4Header object compiles without fuss:
-```
+```cpp
 void f(std::size_t sz); // function to call
 IPv4Header h;
 ...
 f(h.totalLength);       // fine
 ```
 Trying to forward h.totalLength to f via fwd, however, is a different story: 
-```
+```cpp
 fwd(h.totalLength);     // error!
 ```
 The problem is that fwd’s parameter is a reference, and h.totalLength is a non- const bitfield. That may not sound so bad, but the C++ Standard condemns the
@@ -166,7 +166,7 @@ arbitrary bits (C++ dictates that the smallest thing you can point to is a char)
 
 Working around the impossibility of perfect-forwarding a bitfield is easy, once you realize that any function that accepts a bitfield as an argument will receive a copy of the bitfield’s value. After all, no function can bind a reference to a bitfield, nor can any function accept pointers to bitfields, because pointers to bitfields don’t exist. The only kinds of parameters to which a bitfield can be passed are by-value parameters and, interestingly, references-to-const. In the case of by-value parameters, the called function obviously receives a copy of the value in the bitfield, and it turns out that in the case of a reference-to-const parameter, the Standard requires that the reference actually bind to a copy of the bitfield’s value that’s stored in an object of some stan‐ dard integral type (e.g., int). References-to-const don’t bind to bitfields, they bind to “normal” objects into which the values of the bitfields have been copied.
 The key to passing a bitfield into a perfect-forwarding function, then, is to take advantage of the fact that the forwarded-to function will always receive a copy of the bitfield’s value. You can thus make a copy yourself and call the forwarding function with the copy. In the case of our example with IPv4Header, this code would do the trick:
-```
+```cpp
 // copy bitfield value; see Item 6 for info on init. form
 auto length = static_cast<std::uint16_t>(h.totalLength);
 fwd(length);                // forward the copy 

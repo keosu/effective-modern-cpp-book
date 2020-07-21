@@ -36,7 +36,7 @@ through  the std::thread API;  the  task-based API  (i.e.,  futures) doesn’t p
 Our approach will therefore be based on threads, not tasks.
 
 We could come up with code like this:
-```
+```cpp
 constexpr auto tenMillion = 10000000;         // see Item 15
                                               // for constexpr
 bool doWork(std::function<bool(int)> filter,  // returns whether
@@ -65,7 +65,7 @@ bool doWork(std::function<bool(int)> filter,  // returns whether
 Before I explain why this code is problematic, I’ll remark that tenMillion’s initializ‐
 ing value can be made more readable in C++14 by taking advantage of C++14’s abil‐
 ity to use an apostrophe as a digit separator:
-```
+```cpp
 constexpr auto tenMillion = 10'000'000;       // C++14
 ```
 I’ll also remark that setting t’s priority after it has started running is a bit like closing
@@ -135,7 +135,7 @@ should do.
 Fortunately,  it’s not difficult  to write one yourself. For  example,  the  following  class
 allows  callers  to  specify  whether  join  or  detach  should  be  called  when  a  Threa
 dRAII object (an RAII object for a std::thread) is destroyed:
-```
+```cpp
 class ThreadRAII {
 public:
   enum class DtorAction { join, detach };    // see Item 10 for
@@ -189,7 +189,7 @@ ThreadRAII object from it, used get to acquire access to t, and then did a move
 from  t  or  called  join  or  detach  on  it.  Each  of  those  actions would  render  t
 unjoinable.
 If you’re worried that in this code,
-```
+```cpp
 if (t.joinable()) {
   if (action == DtorAction::join) {
     t.join();
@@ -212,7 +212,7 @@ const member functions (see Item 16).
 
 
 Employing ThreadRAII in our doWork example would look like this:
-```
+```cpp
 bool doWork(std::function<bool(int)> filter,  // as before
             int maxVal = tenMillion)
 {
@@ -256,7 +256,7 @@ Item  17  explains  that  because  ThreadRAII  declares  a  destructor,  there  
 compiler-generated  move  operations,  but  there  is  no  reason  ThreadRAII  objects
 shouldn’t  be movable.  If  compilers were  to  generate  these  functions,  the  functions
 would do the right thing, so explicitly requesting their creation isappropriate:
-```
+```cpp
 class ThreadRAII {
 public:
   enum class DtorAction { join, detach };           // as before

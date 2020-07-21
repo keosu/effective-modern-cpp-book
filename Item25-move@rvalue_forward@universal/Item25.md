@@ -3,7 +3,7 @@ http://blog.csdn.net/boydfd/article/details/50865400
 
 
 右值引用只能绑定那些有资格被move的对象上去。如果你有一个右值引用类型的参数，你就知道这个被绑定的对象可以被move：
-```
+```cpp
 class Wdiget{
     Widget(Widget&& rhs);   // rhs肯定指向一个有资格被move的对象
     ...
@@ -11,7 +11,7 @@ class Wdiget{
 ```
 在这种情况下，你会想传这样一个对象给其他函数，来允许这些函数能利用对象的右值属性。为了达到这样的目的，需要把绑定到这些对象的参数转换成右值。就像Item 23解释的那样，std::move不仅是这么做了，它就是为了这个目的而被创造出来的：
 
-```
+```cpp
 class Widget{
 public:
     Widget(Widget&& rhs)            // rhs是一个右值引用
@@ -27,7 +27,7 @@ private:
 ```
 在另一方面，一个universal引用可能（译注：只是可能不是一定）被绑定到一个有资格被move的对象上去。universal引用只在它由右值初始化的时候需要被转换成一个右值。Item 23解释了这就是std::forward具体做的事情：
 
-```
+```cpp
 class Widget {
 public:
     template<typename T>
@@ -41,7 +41,7 @@ public:
 
 Item 23解释了对右值引用使用std::forward能让它显示出正确的行为，但是源代码会因此变得冗长、易错、不符合习惯的，所以你应该避免对右值引用使用std::forward。对universal引用使用std::move是更加糟糕的想法，因为这样会对左值（比如，局部变量）产生非预期的修改：
 
-```
+```cpp
 class Widget {
 public:
     template<typename T>
@@ -69,7 +69,7 @@ w.setName(n);                       // 把n move到w中去！
 
 你可能指出stdName不应该声明它的参数为universal引用(这里是指不使用模板T&&)。虽然这样的引用不能是const的（看Item 24，译注：加const就成右值引用了，jizh注解: const T&& param，param退化为一个单纯的右值引用，接收用户的左值将报错），但是setName确实不应该修改参数n的内容。你还可能指出如果setName使用const 左值和右值进行重载，整个问题将被避免。像是这样：
 
-```
+```cpp
 class Widget {
 public:
     void setName(const std::string& newName)    // 从const左值来set
@@ -83,14 +83,14 @@ public:
 ```
 在这种情况下，确实能工作，但是这种方法是有缺点的。首先，它增加了源代码里要编写以及维护的代码量（使用两个函数代替一个简单的模板）。其次，它更加低效。举个例子，考虑这个setName的使用：
 
-```
+```cpp
 w.setName("Adela Novak");
 ```
 使用universal引用版本的setName，在“Adela Novak”字符串被传给setName时(函数内部pt T = const char (&)[8])，它会被转发给处于w对象中的一个std::string（就是w.name）的operator=（译注：`const char*`版本的operator=）函数。因此，w的name数据成员将是用字符串直接赋值的；没有出现一个临时的std::string对象。然而，使用重载版本的setName，为了让setName的参数能绑定上去，一个临时的std::string对象将被创建，然后这个临时的std::string对象将被移动到w的数据成员中去。因此这个setName的调用需要执行一次std::string的构造函数（为了创建临时对象），一个std::string的move operator=（为了move newName到w.name中去），以及一个std::string的析构函数（为了销毁临时对象）。对于`const char*` 指针来说，比起只调用std::string的operator=，上面这些函数就是多花的代价。额外的代价有可能随着实现的不同而产生变化，并且代价是否值得考虑也将随着应用和函数库的不同而产生变化。不管怎么说，事实就是，在一些情况下，使用一对重载了左值和右值的函数来替换带universal引用参数的函数模板有可能增加运行期的代价。如果我们推广这个例子，使得Widget的数据成员可以是任意类型的（不仅仅是熟知的std::string），性能的落差将更大，因为不是所有类型的move操作都和std::string一样便宜的（看Item 29）。
 
 然而，关于重载左值和右值最关键的问题不在于源代码的体积和使用习惯，也不在于执行期的效率。而在于它是一种可扩展性很差的设计。Widget::setName只携带一个参数，所以只需要两个重载，但是对于一些携带更多参数的函数，而且每个参数都可以是左值或右值，那么需要重载的数量就成几何增长了：n个参数需要2^n个重载。并且这还不是最糟糕的。一些函数—函数模板—携带不确定数量的参数，每个参数可以是左值或右值。这种函数的代表人物就是std::make_shared，以及C++14中的std::make_unique（看Item 21）。看一下它们最常见的声明式：
 
-```
+```cpp
 template<class T, class... Args>
 shared_ptr<T> make_shared(Args&&... args);      // 来自C++11标准库
 
@@ -101,7 +101,7 @@ unique_ptr<T> make_shared(Args&&... args);      // 来自C++14标准库
 
 刚开始接触这些的时候不是很有必要，但是最终，你总能碰到在一些情况，对于被绑定到右值引用或universal的引用的对象，你将在一个函数中使用它们超过一次，而且你想确保在你使用完它们之前，它们不会被move走。对于这种情况，你可以只在最后一次使用这些引用的时候加上std::move（对于右值引用）或std::forward（对于universal引用）。举个例子：
 
-```
+```cpp
 template<typename T>
 void setSignText(T&& text)                  // text是universal引用
 {
@@ -120,7 +120,7 @@ void setSignText(T&& text)                  // text是universal引用
 
 如果在一个返回值是传值（by-value）的函数中，你想返回一个对象，而且这个对象被绑定到一个右值引用或universal引用上去了，那么当你返回引用的时候，你会想对其使用std::move或std::forward。为了说明这种情况，考虑一个operator+函数，它把两个矩形加在一起，左边的矩阵是一个右值（因此我们可以让它的内存空间用来存放矩阵的和）：
 
-```
+```cpp
 Matrix                                      // 通过传值返回
 operator+(Matrix&& lhs, const Matrix& rhs)  
 {   
@@ -130,7 +130,7 @@ operator+(Matrix&& lhs, const Matrix& rhs)
 ```
 通过在返回语句中把lhs转换为一个右值（通过std::move），lhs将被move到函数的返回值所在的内存区域。如果不调用std::move，
 
-```
+```cpp
 Matrix                                      // 同上
 operator+(Matrix&& lhs, const Matrix& rhs)  
 {   
@@ -144,7 +144,7 @@ operator+(Matrix&& lhs, const Matrix& rhs)
 
 这种情况同universal引用和std::forward是相似的。考虑一个函数模板reduceAndCopy，它可能以一个未reduce的Fraction对象作为参数，在函数中reduce它，然后返回一个reduce过后的拷贝值。如果源对象是一个右值，它的值应该被move到返回值中（因此避免了一次拷贝的代价），但是如果源对象是一个左值，一个拷贝值将被创建。因此：
 
-```
+```cpp
 template<typename T>
 Fraction                                // 通过传值返回
 reduceAndCopy(T&& frac)                 // universal引用参数
@@ -157,7 +157,7 @@ reduceAndCopy(T&& frac)                 // universal引用参数
 
 一些程序员吸收了上面的知识后会尝试着去把它扩展到别的情况中去，但是在这些情况下是不该这么做的。“如果对一个要被拷贝到返回值中去的右值引用参数使用std::move，能把copy构造函数转换成move构造函数，”他们就会推断，“那么我能对将被返回的局部变量执行同样的优化。”总之，他们认为，如果给出的函数返回一个传值的局部变量，比如这样：
 
-```
+```cpp
 Widget makeWidget()         // 拷贝版本的makeWidget
 {
     Widget w;               // 局部变量
@@ -169,7 +169,7 @@ Widget makeWidget()         // 拷贝版本的makeWidget
 ```
 他们就能通过把“拷贝”转换成move来“优化”它：
 
-```
+```cpp
 Widget makeWidget()         // move版本的makeWidget
 {
     Widget w;               
@@ -183,7 +183,7 @@ Widget makeWidget()         // move版本的makeWidget
 
 规定这样一个保护是很繁琐的工作，因为你只想要在不会影响到软件的行为时才允许这样消除拷贝。把标准中原有的（这个原有的规则比较arguably toxic， 译注：这个照字面来翻译是：可以说是有毒的，可以理解为是负面的）规则进行改写之后，这个特别的保护告诉我们，在返回值是传值的函数中，只要你做到：(1)局部对象的类型和函数返回值的类型一样（2）这个局部对象将被返回，编译器就有可能消除一个局部对象的拷贝（或move）。带着这些条件，让我们看一下makeWidget的“拷贝”版本：
 
-```
+```cpp
 Widget makeWidget()         // 拷贝版本的makeWidget
 {
     Widget w;               
@@ -195,7 +195,7 @@ Widget makeWidget()         // 拷贝版本的makeWidget
 
 makeWidget的move版本只做它名字所说的东西（假设Widget提供一个move构造函数）：它把w的内容move到makeWidget的返回值所在的内存中去。但是为什么比编译器不使用RVO来消除move操作，在内存中构造一个w分配给函数的返回值的呢？回答很简单：它们不能这么做。情况（2）规定了RVO只有在返回的值是局部对象时才执行，但是makeWidget的move版本不是这么做的。再看一下它的返回语句：
 
-```
+```cpp
 return std::move(w);
 ```
 这里返回的不是局部对象w，它是一个w的引用—std::move(w)的返回值。返回一个局部对象的引用不能满足RVO的条件要求，所以编译器必须把w move到函数的返回值所在的内存中去。开发者试图对将要返回的局部变量调用std::move，来帮助他们的编译器进行优化，但是这恰恰限制了他们的编译器的优化能力！
@@ -204,7 +204,7 @@ return std::move(w);
 
 在这种情况下，把std::move用在局部对象上还是一个糟糕的注意。标准中关于RVO的部分还说到，碰到能进行RVO优化的情况，如果编译器选择不去消除拷贝，则被返回的对象必须被视为一个右值。实际上，C++标准要求当RVO被允许时，要么消除拷贝，要么隐式地把std::move用在要返回的局部对象上去。所以在makeWidget的“拷贝”版本中，
 
-```
+```cpp
 Widget makeWidget()         // 同上
 {
     Widget w;               
@@ -214,7 +214,7 @@ Widget makeWidget()         // 同上
 ```
 编译器必须要么消除掉w的拷贝，要么把函数看成这样子：
 
-```
+```cpp
 Widget makeWidget()
 {
     Widget w;               
@@ -224,7 +224,7 @@ Widget makeWidget()
 ```
 这种情况和函数参数是传值的情况是一样的。对于这些函数的返回值而言，它们不符合消除拷贝的条件，但是如果它们被返回，编译器必须把它们视为右值。如果源代码看起来像是这样：
 
-```
+```cpp
 Widget makeWidget(Widget w)     // 传值的参数和函数的返回值类型一致
 {                           
     ...
@@ -232,7 +232,7 @@ Widget makeWidget(Widget w)     // 传值的参数和函数的返回值类型一
 }   
 ```
 编译器必须把函数视为这样：
-```
+```cpp
 
 Widget makeWidget(Widget w) 
 {                           

@@ -5,7 +5,7 @@
 博客已经迁移到这里啦
 
 如果我们在数学领域里工作，我们可能会发现用一个类来表示多项式会很方便。在这个类中，如果有一个函数能计算多选式的根（也就是，多项式等于0时，各个未知量的值）将变得很方便。这个函数不会改变多项式，所以很自然就想到把它声明为const：
-```
+```cpp
 class Polynomial{
 public:
     using RootsType =               //一个存放多项式的根的数据结构
@@ -20,7 +20,7 @@ public:
 ```
 计算多项式的根代价可能很高，所以如果不必计算的话，我们就不想计算。如果我们必须要计算，那么我们肯定不想多次计算。因此，当我们必须要计算的时候，我们将计算后的多项式的根缓存起来，并且让roots函数返回缓存的根。这里给出最基本的方法：
 
-```
+```cpp
 class Polynomial{
 public:
     using RootsType = std::vector<double>;
@@ -46,7 +46,7 @@ private:
 
 现在想象一下有两个线程同时调用同一个Polynomial对象的roots：
 
-```
+```cpp
 Polynomuial p;
 
 ...
@@ -62,7 +62,7 @@ auto rootsOfP = p.roots();          auto valsGivingZero = p.roots();
 
 解决这个问题最简单的方式就是最常用的办法：使用一个mutex：
 
-```
+```cpp
 class Polynomial{
 public:
     using RootsType = std::vector<double>;
@@ -92,7 +92,7 @@ std::mutex m被声明为mutable，因为对它加锁和解锁调用的都不是c
 
 在一些情况下，一个mutex是负担过重的。举个例子，如果你想做的事情只是计算一个成员函数被调用了多少次，一个std::atomic计数器（也就是，其它的线程保证看着它的（counter的）操作不中断地做完，看Item 40）常常是达到这个目的的更廉价的方式。（事实上是不是更廉价，依赖于你跑代码的硬件和标准库中mutex的实现）这里给出怎么使用std::atomic来计算调用次数的例子：
 
-```
+```cpp
 class Point {
 public:
     ...
@@ -112,7 +112,7 @@ private:
 
 因为比起mutex的加锁和解锁，对std::atomic变量的操作常常更廉价，所以你可能会过度倾向于std::atomic。举个例子，在一个类中，缓存一个“计算昂贵”的int，你可能会尝试使用一对std::atomic变量来代替一个mutex：
 
-```
+```cpp
 class Widget {
 public:
     ...
@@ -140,7 +140,7 @@ private:
 在这个时间点，第二个线程调用Widget::magicValue，也看到cacheValid是false的，因此同样进行了昂贵的计算（这个计算第一个线程已经完成了）。（这个“第二个线程”事实上可能是一系列线程，也就会不断地进行这昂贵的计算）
 这样的行为和我们使用缓存的目的是相违背的。换一下cachedValue和CacheValid赋值的顺序可以消除这个问题（不断进行重复计算），但是错的更加离谱了：
 
-```
+```cpp
 class Widget {
 public:
     ...
@@ -164,7 +164,7 @@ public:
 同时，第二个线程调用Widget::magicValue，然后检查cacheValid，发现它是true，然后，即使第一个线程还没有把计算结果缓存下来，它还是直接返回cachedValue。因此，返回的值是不正确的。
 让我们吸取教训。对于单一的变量或者内存单元，它们需要同步时，使用std::atomic就足够了，但是一旦你需要处理两个或更多的变量或内存单元，并把它们视为一个整体，那么你就应该使用mutex。对于Widget::magicValue，看起来应该是这样的：
 
-```
+```cpp
 class Widget {
 public:
     ...

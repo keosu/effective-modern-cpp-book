@@ -25,7 +25,7 @@ ther get nor wait is called, f will never run.
 Perhaps  surprisingly,  std::async’s  default  launch  policy—the  one  it  uses  if  you
 don’t expressly specify one—is neither of these. Rather, it’s these or-ed together. The
 following two calls have exactly the same meaning:
-```
+```cpp
 auto fut1 = std::async(f);                     // run f using
                                                // default launch
                                                // policy
@@ -42,7 +42,7 @@ nient.
 
 But using std::async with  the default  launch policy has  some  interesting  implica‐
 tions. Given a thread t executing this statement,
-```
+```cpp
 auto fut = std::async(f);   // run f using default launch policy
 ```
 - It’s not possible  to predict whether f will run concurrently with t, because f
@@ -57,7 +57,7 @@ through the program.
 The default  launch policy’s scheduling  flexibility often mixes poorly with  the use of
 thread_local variables, because  it means that  if f reads or writes such thread-local
 storage (TLS), it’s not possible to predict which thread’s variables will be accessed:
-```
+```cpp
 auto fut = std::async(f);        // TLS for f possibly for
                                  // independent thread, but
                                  // possibly for thread
@@ -67,7 +67,7 @@ It  also  affects  wait-based  loops  using  timeouts,  because  calling  wait_f
 wait_until  on  a  task  (see  Item  35)  that’s  deferred  yields  the  value
 std::launch::deferred.  This means  that  the  following  loop, which  looks  like  it
 should eventually terminate, may, in reality, run forever:
-```
+```cpp
 using namespace std::literals;        // for C++14 duration
                                       // suffixes; see Item 34
 void f()                              // f sleeps for 1 second,
@@ -102,7 +102,7 @@ Instead, you have to call a timeout-based function—a function such as wait_for
 this case, you don’t really want to wait for anything, you just want to see if the return
 value is std::future_status::deferred, so stifle your mild disbelief at the neces‐
 sary circumlocution and call wait_for with a zero timeout:
-```
+```cpp
 auto fut = std::async(f);                  // as above
 if (fut.wait_for(0s) ==                    // if task is
     std::future_status::deferred)          // deferred...
@@ -131,14 +131,14 @@ account.
 If  any  of  these  conditions  fails  to  hold,  you  probably  want  to  guarantee  that
 std::async will schedule the task  for truly asynchronous execution. The way to do
 that is to pass std::launch::async as the first argument when you make the call:
-```
+```cpp
 auto fut = std::async(std::launch::async, f);  // launch f
                                                // asynchronously
 ```
 In  fact,  having  a  function  that  acts  like  std::async,  but  that  automatically  uses
 std::launch::async as  the  launch policy,  is a  convenient  tool  to have around,  so
 it’s nice that it’s easy to write. Here’s the C++11 version:
-```
+```cpp
 template<typename F, typename... Ts>
 inline
 std::future<typename std::result_of<F(Ts...)>::type>
@@ -155,7 +155,7 @@ as  the  launch  policy.  Like  std::async,  it  returns  a  std::future  for  t
 invoking f on params. Determining  the  type of  that  result  is easy, because  the  type
 trait  std::result_of  gives  it  to  you.  (See  Item  9  for  general  information  on  type
 traits.)
-```
+```cpp
 reallyAsync is used just like std::async:
 auto fut = reallyAsync(f);         // run f asynchronously;
                                    // throw if std::async
@@ -163,7 +163,7 @@ auto fut = reallyAsync(f);         // run f asynchronously;
 ```
 In C++14, the ability to deduce reallyAsync’s return type streamlines the  function
 declaration:
-```
+```cpp
 template<typename F, typename... Ts>
 inline
 auto                                           // C++14

@@ -4,11 +4,11 @@ One of the most exciting features of C++14 is  generic lambdas—lambdas that us
 auto in their parameter specifications. The implementation of this feature is straight‐
 forward: operator() in the lambda’s closure class is a template. Given this lambda,
 for example,
-```
+```cpp
 auto f = [](auto x){ return func(normalize(x)); };
 ```
 the closure class’s function call operator looks like this:
-```
+```cpp
 class SomeCompilerGeneratedClassName {
 public:
   template<typename T>                   // see Item 3 for 
@@ -24,7 +24,7 @@ even if the argument that was passed to the lambda was an rvalue.
 The correct way to write the lambda is to have it perfect-forward x  to normalize.
 Doing that requires two changes to the code. First, x has to become a universal refer‐ence (see Item 24), and second, it has to be passed to normalize via std::forward
 (see Item 25). In concept, these are trivial modifications:
-```
+```cpp
 auto f = [](auto&& x)
          { return func(normalize(std::forward<???>(x))); };
 ```
@@ -50,7 +50,7 @@ an lvalue reference. That conforms to convention. However, if  x  is bound to an
 rvalue,  decltype(x) will yield an rvalue reference instead of the customary non-
 reference.
 But look at the sample C++14 implementation for std::forward from Item 28:
-```
+```cpp
 template<typename T>                         // in namespace
 T&& forward(remove_reference_t<T>& param)    // std
 {
@@ -60,7 +60,7 @@ T&& forward(remove_reference_t<T>& param)    // std
 If client code wants to perfect-forward an rvalue of type Widget, it normally instanti‐
 ates  std::forward with the type  Widget (i.e, a non-reference type), and the
 std::forward template yields this function:
-```
+```cpp
 Widget&& forward(Widget& param)            // instantiation of
 {                                          // std::forward when
   return static_cast<Widget&&>(param);     // T is Widget
@@ -73,7 +73,7 @@ be a non-reference type, it specified it to be an rvalue reference. That is, con
 what would happen if T were specified to be Widget&&. After initial instantiation of
 std::forward and application of std::remove_reference_t, but before reference
 collapsing (once again, see Item 28), std::forward would look like this:
-```
+```cpp
 Widget&& && forward(Widget& param)         // instantiation of
 {                                          // std::forward when
   return static_cast<Widget&& &&>(param);  // T is Widget&&
@@ -99,7 +99,7 @@ yields a type to pass to std::forward that’s not conventional, but that nevert
 yields the same outcome as the conventional type. So for both lvalues and rvalues,
 passing  decltype(x) to  std::forward gives us the result we want. Our perfect-
 forwarding lambda can therefore be written like this:
-```
+```cpp
 auto f =
   [](auto&& param)
   {
@@ -110,7 +110,7 @@ auto f =
 From there, it’s just a hop, skip, and six dots to a perfect-forwarding lambda that
 accepts not just a single parameter, but any number of parameters, because C++14
 lambdas can also be variadic:
-```
+```cpp
 auto f =
   [](auto&&... params)
   {

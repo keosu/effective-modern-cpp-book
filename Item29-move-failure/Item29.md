@@ -9,7 +9,7 @@ Let’s begin with the observation that many types fail to support move semantic
 Even types with explicit move support may not benefit as much as you’d hope. All containers in the standard C++11 library support moving, for example, but it would be a mistake to assume that moving all containers is cheap. For some containers, this is because there’s no truly cheap way to move their contents. For others, it’s because the truly cheap move operations the containers offer come with caveats the container elements can’t satisfy.
 
 Consider std::array, a new container in C++11. std::array is essentially a built- in array with an STL interface. This is fundamentally different from the other stan‐ dard containers, each of which stores its contents on the heap. Objects of such container types hold (as data members), conceptually, only a pointer to the heap memory storing the contents of the container. (The reality is more complex, but for purposes of this analysis, the differences are not important.) The existence of this pointer makes it possible to move the contents of an entire container in constant time: just copy the pointer to the container’s contents from the source container to the target, and set the source’s pointer to null:
-```
+```cpp
 std::vector<Widget> vw1; 
 // put data into vw1
 
@@ -24,7 +24,7 @@ auto vw2 = std::move(vw1);
 ![](vec_move.png)
 
 std::array objects lack such a pointer, because the data for a std::array’s con‐ tents are stored directly in the std::array object:
-```
+```cpp
 std::array<Widget, 10000> aw1; 
 // put data into aw1
 //...

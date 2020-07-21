@@ -27,7 +27,7 @@ Using an init capture makes it possible for you to specify
 2. an expression initializing that data member.
 
 Here’s how you can use init capture to move a std::unique_ptr into a closure:
-```
+```cpp
 class Widget {                          // some useful type
 public:
   …
@@ -66,7 +66,7 @@ tured by the lambda, the Widget is modified in some way. If no such configuratio
 necessary, i.e., if the Widget created by std::make_unique is in a state suitable to be
 captured  by  the  lambda,  the  local  variable  pw  is  unnecessary,  because  the  closure
 class’s data member can be directly initialized by std::make_unique:
-```
+```cpp
 auto func = [pw = std::make_unique<Widget>()]  // init data mbr
             { return pw->isValidated()         // in closure w/
                      && pw->isArchived(); };   // result of call
@@ -83,7 +83,7 @@ Remember that a lambda expression is simply a way to cause a class to be generat
 and an object of that type to be created. There  is nothing you can do with a  lambda
 that you can’t do by hand. The example C++14 code we just saw, for example, can be
 written in C++11 like this:
-```
+```cpp
 class IsValAndArch {                         // "is validated
 public:                                      // and archived"
   using DataType = std::unique_ptr<Widget>;
@@ -113,7 +113,7 @@ trouble.
 Suppose  you’d  like  to  create  a  local std::vector, put  an  appropriate  set of  values
 into it, then move it into a closure. In C++14, this is easy:
 
-```
+```cpp
 std::vector<double> data;                 // object to be moved
                                           // into closure
 …                                         // populate data
@@ -124,7 +124,7 @@ I’ve  highlighted  key  parts  of  this  code:  the  type  of  object  you  wa
 (std::vector<double>), the name of that object (data), and the initializing expres‐
 sion  for  the  init  capture  (std::move(data)).  The C++11  equivalent  is  as  follows,
 where I’ve highlighted the same key things:
-```
+```cpp
 std::vector<double> data;                 // as above
 …                                         // as above
 auto func =
@@ -167,7 +167,7 @@ fied inside the lambda, the lambda’s parameter is declared reference-to-const.
 lambda  were  declared  mutable,  operator()  in  its  closure  class  would  not  be
 declared const, and it would be appropriate to omit const in the lambda’s parame‐
 ter declaration:
-```
+```cpp
 auto func =
   std::bind(                               // C++11 emulation
     [](std::vector<double>& data) mutable  // of init capture
@@ -194,7 +194,7 @@ sible to treat objects in the bind object as if they were in the closure.
 
 As a second example of using std::bind to emulate move capture, here’s the C++14
 code we saw earlier to create a std::unique_ptr in a closure:
-```
+```cpp
 auto func = [pw = std::make_unique<Widget>()]    // as before,
             { return pw->isValidated()           // create pw
                      && pw->isArchived(); };     // in closure

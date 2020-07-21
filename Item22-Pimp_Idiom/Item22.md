@@ -3,7 +3,7 @@ http://blog.csdn.net/boydfd/article/details/50637272
 
 
 如果你曾经同过久的编译时间斗争过，那么你肯定对Pimpl（”point to implementation”,指向实现）机制很熟悉了。这种技术让你把类的数据成员替换成指向一个实现类（或结构）的指针，把曾经放在主类中的数据成员放到实现类中去，然后通过指针间接地访问那些数据成员。举个例子，假设Widget看起来像这个样子：
-```
+```cpp
 /*未使用Pimpl机制*/
 class Widget{                   // 在头文件"widget.h"中
 public:
@@ -19,7 +19,7 @@ private:
 
 在C++98中应用Pimpl机制需要在Widget中把它的数据成员替换成一个原始指针，指向一个已经被声明却还没有定义的结构：
 
-```
+```cpp
 /*使用Pimpl机制*/
 class Widget{                       // 还是在头文件"widget.h"中
 public:
@@ -38,7 +38,7 @@ private:
 
 Pimpl机制的第一步就是声明一个数据成员指向一个不完整类型。第二步是动态分配和归还这个类型的对象，这个对象持有曾经在源类（没使用Pimpl机制时的类）中的数据成员。分配和归还代码写在实现文件中，比如，对于Widget来说，就在widget.cpp中:
 
-```
+```cpp
 #include "widget.h"             //在实现文件"widget.cpp"中
 #include "gadget.h"
 #include <string>
@@ -61,7 +61,7 @@ Widget::~Widget()              // 归还这个对象的数据成员
 
 但是我显示给你的是C++98的代码，并且这散发着浓浓的旧时代的气息。它使用原始指针和原始的new，delete，怎么说呢，就是太原始了。这一章的主题是智能指针优于原始指针，所以如果我们想在Widget构造函数中动态分配一个Widget::Impl对象，并且让它的销毁时间和Widget一样，std::unique_ptr(看Item 18)这个工具完全符合我们的需要。把原始pImpl指针替换成std::unique_ptr在头文件中产生出这样的代码：
 
-```
+```cpp
 class Widget{
 public:
     Widget();
@@ -74,7 +74,7 @@ private:
 ```
 然后在实现文件中是这样的:
 
-```
+```cpp
 #include "widget.h"                 
 #include "gadget.h"
 #include <string>
@@ -94,7 +94,7 @@ Widget::Widget()                            // 通过std::make_unique
 
 这段代码能编译通过，但是，可悲的是，客户无法使用：
 
-```
+```cpp
 #include "widget.h"
 
 Widget w;                   // 错误
@@ -107,7 +107,7 @@ Widget w;                   // 错误
 
 调整起来很简单，在widget.h中声明Widget的的析构函数，但是不在这定义它：
 
-```
+```cpp
 class Widget {
 public:
     Widget();
@@ -121,7 +121,7 @@ private:
 ```
 然后在widget.cpp中于Widget::Impl之后进行定义:
 
-```
+```cpp
 #include "widget.h" 
 #include "gadget.h"
 #include <string>
@@ -142,12 +142,12 @@ Widget::~Widget()                      // ~Widget的定义
 ```
 这工作得很好，并且它要码的字最少，但是如果你想要强调“编译器产生的”析构函数可以做到正确的事情（也就是你声明它的唯一原因就是让它的定义在Widget的实现文件中产生），那么你就能在定义析构函数的时候使用“=default”：
 
-```
+```cpp
 Widget::~Widget() = default;           //和之前的效果是一样的
 ```
 使用Pimpl机制的类是可以支持move操作的，因为“编译器产生的”move操作是我们需要的：执行一个move操作在std::unique_ptr上。就像Item 17解释的那样，在Widget中声明一个析构函数会阻止编译器产生move操作，所以如果你想支持move操作，你必须自己声明这些函数。如果“编译器产生的”版本是正确的行为，你可能会尝试像下面这样实现：
 
-```
+```cpp
 class Widget {
 public:
     Widget();
@@ -166,7 +166,7 @@ private:
 
 因为问题和之前一样，所以修复方法也一样：把move操作的定义移动到实现文件中去：
 
-```
+```cpp
 class Widget {
 public:
     Widget();
@@ -200,7 +200,7 @@ Pimpl机制是减少类的实现和类的客户之间的编译依赖性的方法
 
 按照我们已经熟悉的惯例，我们在头文件中声明函数，并且在实现文件中实现它：
 
-```
+```cpp
 class Widget {                              // 在"widget.h"中
 public:
     …                                       // 和之前一样的其他函数
@@ -235,7 +235,7 @@ Widget& Widget::operator=(const Widget& rhs)    // 拷贝operator=
 
 为了实现Pimpl机制，std::unique_ptr是被使用的智能指针，因为对象（也就是Widget）内部的pImpl指针对相应的实现对象（比如，Widget::Impl对象）有独占所有权的语义。这很有趣，所以记住，如果我们使用std::shared_ptr来代替std::unique_ptr用在pImpl身上，我们将发现对于本Item的建议不再使用了。我们不需要声明Widget的析构函数，并且如果没有自定义的析构函数，编译器将很高兴地为我们产生出move操作，这些都是我们想要的。给出widget.h中的代码，
 
-```
+```cpp
 class Widget{                       //在"widget.h"中
 public:
     Widget();                   

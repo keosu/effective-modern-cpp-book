@@ -12,7 +12,7 @@ http://www.cnblogs.com/boydfd/p/5041316.html
 但是，让我们从constexpr对象开始。这些对象确实是常量，也确实能在编译期被知道。（技术上来讲，它们的值是在翻译阶段被决定的，翻译阶段包含了编译期和链接期。除非你要写一个C++的编译器或连接器，不然这都影响不到你，所以你能在编程的时候，开心地假设为constexpr对象的值是在编译期被决定的）
 
 值能在编译器知道是很有用的。它们能代替只读内存，举个例子，尤其是对一些嵌入式系统来说，这是一个相当重要的特性。更广泛的应用就是，当C++要求一个不变的，并且在编译期能知道的整形常量表达式的时候，我们可以使用它（constexpr对象或函数）来替代。这样的场景包括了数组大小的说明，整形模板参数（包括std::array对象的长度），枚举成员的值，alignment说明符，等等。如果你想使用变量来做这些事，你肯定想要把它声明为constexpr，因为编译器会确保它是一个编译期的值：
-```
+```cpp
 int sz;                             //non-constexpr变量
 
 ...
@@ -27,7 +27,7 @@ std::array<int, arraySize2> data2;  //对的，arraySize2是一个constexpr
 ```
 记住，const不能提供和constexpr一样的保证，因为const对象不需要用“在编译期就知道的”值初始化：
 
-```
+```cpp
 int sz;
 
 ...
@@ -48,7 +48,7 @@ constexpr函数能被用在要求编译期常量的上下文中，如果所有�
 
 幸运的是，我们能自己写一个我们所需要的pow，我马上就会告诉你怎么实现，但是现在先让我们看一下它是怎么声明以及怎么使用的：
 
-```
+```cpp
 constexpr                                   //pow是一个constexpr函数
 int pow(int base, int exp) noexcept         //永远不会抛出异常
 {
@@ -61,7 +61,7 @@ std::array<int, pow(3, numConds)> results;  //结果有3^numConds个函数
 ```
 回忆一下，pow前面的constexpr不是说pow返回一个const值，它意味着如果base和exp是编译期常量，pow的返回结果能被视为编译期常量。如果base和/或exp不是编译期常量，pow的结果将在运行期计算。这意味着pow不只能在编译阶段计算std::array的大小，它也可以在运行期的时候这么调用:
 
-```
+```cpp
 auto base = readFromDB("base");     //运行期得到这些值
 auto exp = readFromDB("exponent");  
 
@@ -71,14 +71,14 @@ auto baseToExp = pow(base, exp);    //在运行期调用pow
 
 在c++11中，constexpr函数只能包含一条简单的语句：一个return语句。实际上，限制没听起来这么大，因为两个技巧可以用来扩张constexpr函数的表达式，并且这将超过你的想象。第一，条件表达式 “?:”能用来替换if-else语句，然后第二，递归能用来替换循环。因此pow被实现成这样：
 
-```
+```cpp
 constexpr int pow(int base, int exp) noexcept
 {
     return (exp == 0 ? 1 : base * pow(base, exp - 1));
 }
 ```
 这确实可以工作，但是很难想象，除了写函数的人，还有谁会觉得这个函数写得很优雅。在C++14中，constexpr函数的限制大幅度变小了，所以这让下面的实现成为了可能：
-```
+```cpp
 
 constexpr int pow(int base, int exp) noexcept           //C++14
 {
@@ -90,7 +90,7 @@ constexpr int pow(int base, int exp) noexcept           //C++14
 ```
 constexpr函数由于限制，只能接受和返回literal类型（本质上来说就是，这个类型的值能在编译期决定）。在C++11中，除了void的所有built-in类型都是literal类型，user-defined类型也可能是literal类型。因为构造函数和其他函数也可能是constexpr：
 
-```
+```cpp
 class Point{
 public:
     constexpr Point(double xVal = 0, double yVal = 0) noexcept
@@ -109,14 +109,14 @@ private:
 ```
 这里，Point的构造函数被声明为constexpr，因为如果传入的参数能在编译期知道，则被构造的Point的成员变量的值也能在编译期知道。因此，Point也能被初始化为constexpr：
 
-```
+```cpp
 constexpr Point p1(9.4, 27.7);          //对的，在编译期“执行”constexpr构造函数  
 
 constexpr Point p2(28.8, 5.3);          //也是对的
 ```
 同样地，getter（xValue和yValue）也能是constexpr，因为如果用一个在编译期就知道的Point对象调用它们（比如，一个constexpr Point对象），则成员变量x和y的值都能在编译期知道。这使得一个constexpr函数能调用Point的getter，然后用这个函数的返回值来初始化一个constexpr对象。
 
-```
+```cpp
 constexpr
 Point midpoint(const Point& p1, const Point& p2) noexcept
 {
@@ -132,7 +132,7 @@ constexpr auto mid = midpoint(p1, p2);          //用constexpr函数的返回值
 
 在C++11中，有两个限制阻止Point的成员函数setX和setY被声明为constexpr。第一，它们改动了它们操作的对象，但是在C++11中，constexpr成员函数被隐式声明为const。第二，它们的返回值类型是void，void类型在C++11中不是literal类型。在C++14中，两个限制都被移除了，所以C++14的Point，能把它的setter也声明为constexpr：
 
-```
+```cpp
 class Point{
 public:
     ...
@@ -148,7 +148,7 @@ public:
 ```
 这使得我们能写出这样的函数：
 
-```
+```cpp
 constexpr Point reflection(const Point& p) noexcept
 {
     Point result;                       //创建一个non-constPoint
@@ -161,7 +161,7 @@ constexpr Point reflection(const Point& p) noexcept
 ```
 客户代码看起来像这样：
 
-```
+```cpp
 constexpr Point p1(9.4, 27.7);      
 constexpr Point p2(28.8, 5.3);
 constexpr auto mid = midpoint(p1, p2);

@@ -8,7 +8,7 @@
 实际上，NULL也是这样的。NULL的情况，在细节方面有一些不确定性，因为C++标准允许它的实现不管是不是int只需要给出一个数值类型（比如，long）。虽然这和0不一样，但是事实上没有关系，因为这里的问题不是NULL的具体类型，而是0和NULL都不是指针类型。
 
 在C++98中，这个问题造成的最主要的影响就是指针和数值类型的重载会导致意外情况。传入一个0或者NULL给这样的重载，则永远不会调用指针版本的重载：
-```
+```cpp
 void f(int);        //f的三个重载
 void f(bool);
 void f(void*);
@@ -24,12 +24,12 @@ nullptr的优点不只是它不是一个整形类型。老实说，它也不是�
 
 用nullptr调用f的重载函数，实际会调用`void*`版本的函数（也就是指针版本的重载），因为nullptr不能被视为任何数值类型：
 
-```
+```cpp
 f(nullptr);         //调用f(void*)版本的重载函数
 ```
 因此使用nullptr来代替0和NULL避免了意外的重载解析，但是这不是他唯一的优点。它还能提升代码的可读性，尤其是在涉及auto变量时。举个例子，假设你遇到下面的代码：
 
-```
+```cpp
 auto result = findRecord(/* arguments*/);
 
 if(result == 0){
@@ -38,7 +38,7 @@ if(result == 0){
 ```
 如果你碰巧不知道（或者很难找出）findRecord返回的类型，这里对于result是指针类型还是整形类型就不明确了。总之，0（用来和result进行比较）可以是两个中的任意一个。但是，如果你看到下面的代码：
 
-```
+```cpp
 auto result = findRecord(/* arguments*/);
 
 if(result == nullptr){
@@ -49,14 +49,14 @@ if(result == nullptr){
 
 当template涉及后，nullptr将变得更加耀眼。假设你有一些函数，它们只能在适当的互斥量被锁住之后才能调用。每个函数使用不同类型的指针：
 
-```
+```cpp
 int     f1(std::shared_ptr<Widget> spw);
 double  f2(std::unique_ptr<Widget> upw);
 bool    f3(Widget* pw);
 ```
 想要传入null指针来调用函数的代码看起来像这样：
 
-```
+```cpp
 std::mutex f1m, f2m, f3m;
 
 using MuxGuard =                //C++11 的typedef，看Item 9
@@ -84,7 +84,7 @@ using MuxGuard =                //C++11 的typedef，看Item 9
 ```
 没有用nullptr调用前面两个函数是令人忧伤的，但是代码能正常工作，这一点很重要。然而，代码中重复的模式（加锁，调用函数，解锁）不仅令人忧伤，这更是令人不安的。这种源代码的重复问题就是template被设计来解决的其中一种，所以让我们模板化这个模式：
 
-```
+```cpp
 template<typename FuncType,
          typename MuxType,
          typename PtrType>
@@ -98,7 +98,7 @@ auto lockAndCall(FuncType func,
 ```
 如果这个函数的返回类型（auto ... ->decltype(func(ptr))）轰击了你的大脑，请问你的大脑经历并赞成过Item 3（解释了发生了什么）吗？你也能看到C++14版本的代码，返回类型能被简化成一个简单的decltype(auto)：
 
-```
+```cpp
 template<typename FuncType,
          typename MuxType,
          typename PtrType>
@@ -112,7 +112,7 @@ decltype(auto) lockAndCall(FuncType func,   //C++14
 ```
 给出lockAndCalltemplate（每个版本）的调用函数，能这么写：
 
-```
+```cpp
 auto result1 = lockAndCall(f1, f1m, 0);         //错误
 
 ...

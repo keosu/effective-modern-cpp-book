@@ -2,12 +2,12 @@
 If  you  want  to  run  a  function  doAsyncWork  asynchronously,  you  have  two  basic
 choices. You can create a std::thread and run doAsyncWork on it, thus employing
 a thread-based approach:
-```
+```cpp
 int doAsyncWork();
 std::thread t(doAsyncWork);
 ```
 Or you can pass doAsyncWork to std::async, a strategy known as task-based:
-```
+```cpp
 auto fut = std::async(doAsyncWork);        // "fut" for "future"
 ```
 In such calls,  the  function object passed  to std::async (e.g., doAsyncWork)  is con‐
@@ -48,11 +48,11 @@ severed).
 Software threads are a limited resource. If you try to create more than the system can
 provide, a std::system_error exception is thrown. This is true even if the function
 you want to run can’t throw. For example, even if doAsyncWork is noexcept,
-```
+```cpp
 int doAsyncWork() noexcept;          // see Item 14 for noexcept
 ```
 this statement could result in an exception:
-```
+```cpp
 std::thread t(doAsyncWork);          // throws if no more
                                      // threads are available
 ```
@@ -90,7 +90,7 @@ your solution will work well on other kinds of machines.
 
 Your  life will  be  easier  if  you  dump  these  problems  on  somebody  else,  and  using
 std::async does exactly that:
-```
+```cpp
 auto fut = std::async(doAsyncWork);   // onus of thread mgmt is
                                       // on implementer of
                                       // the Standard Library

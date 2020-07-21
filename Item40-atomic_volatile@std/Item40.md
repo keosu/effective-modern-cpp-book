@@ -18,7 +18,7 @@ operations  are  generally  implemented  using  special machine  instructions  t
 more efficient than would be the case if a mutex were employed.
 
 Consider this code using std::atomic:
-```
+```cpp
 std::atomic<int> ai(0);    // initialize ai to 0
 ai = 10;                   // atomically set ai to 10
 std::cout << ai;           // atomically read ai's value
@@ -48,7 +48,7 @@ teed to be seen by other threads as atomic.
 
 In contrast, the corresponding code using volatile guarantees virtually nothing in a
 multithreaded context:
-```
+```cpp
 volatile int vi(0);        // initialize vi to 0
 vi = 10;                   // set vi to 10
 std::cout << vi;           // read vi's value
@@ -64,7 +64,7 @@ std::atomic nor protected by a mutex, and that’s the definition of a data race
 As a concrete example of how the behavior of std::atomics and volatiles can dif‐
 fer  in a multithreaded program, consider a simple counter of each type that’s  incre‐
 mented by multiple threads. We’ll initialize each to 0:
-```
+```cpp
 std::atomic<int> ac(0);    // "atomic counter"
 volatile int vc(0);        // "volatile counter"
 We’ll then increment each counter one time in two simultaneously running threads:
@@ -101,7 +101,7 @@ value, it must communicate this to the second task. Item 39 explains that one wa
 the first task to communicate the availability of the desired value to the second task is
 by using  a std::atomic<bool>. Code  in  the  task  computing  the  value would  look
 something like this:
-```
+```cpp
 std::atomic<bool> valAvailable(false);
 auto imptValue = computeImportantValue();  // compute value
 valAvailable = true;                       // tell other task
@@ -112,12 +112,12 @@ take place before the assignment to valAvailable, but all compilers see  is a pa
 assignments  to  independent variables. As a general  rule, compilers are permitted  to
 reorder  such  unrelated  assignments.  That  is,  given  this  sequence  of  assignments
 (where a, b, x, and y correspond to independent variables),
-```
+```cpp
 a = b;
 x = y;
 ```
 compilers may generally reorder them as follows:
-```
+```cpp
 x = y;
 a = b;
 ```
@@ -136,7 +136,7 @@ create software  that runs  faster on some hardware architectures, but  the use 
 that  is much more difficult  to get right,  to understand, and  to maintain. Subtle errors  in code using relaxed
 atomics is not uncommon, even for experts, so you should stick to sequential consistency if at all possible.) 
 That means that in our code,
-```
+```cpp
 auto imptValue = computeImportantValue();  // compute value
 valAvailable = true;                       // tell other task
                                            // it's available
@@ -149,7 +149,7 @@ than valAvailable does—is maintained.
 
 Declaring  valAvailable  as  volatile  doesn’t  impose  the  same  code  reordering
 restrictions:
-```
+```cpp
 volatile bool valAvailable(false);
 auto imptValue = computeImportantValue();
 valAvailable = true;  // other threads might see this assignment
@@ -167,11 +167,11 @@ that they’re dealing with memory that doesn’t behave normally.
 
 “Normal” memory has the characteristic that if you write a value to a memory  loca‐
 tion, the value remains there until something overwrites it. So if I have a normal int,
-```
+```cpp
 int x;
 ```
 and a compiler sees the following sequence of operations on it,
-```
+```cpp
 auto y = x;           // read x
 y = x;                // read x again
 ```
@@ -181,20 +181,20 @@ because it’s redundant with y’s initialization.
 Normal memory  also  has  the  characteristic  that  if  you write  a  value  to  a memory
 location, never read  it, and  then write  to  that memory  location again,  the  first write
 can be eliminated, because it was never used. So given these two adjacent statements,
-```
+```cpp
 x = 10;               // write x
 x = 20;               // write x again
 ```
 compilers can eliminate  the  first one. That means  that  if we have  this  in  the  source
 code,
-```
+```cpp
 auto y = x;           // read x
 y = x;                // read x again
 x = 10;               // write x
 x = 20;               // write x again
 ```
 compilers can treat it as if it had been written like this:
-```
+```cpp
 auto y = x;           // read x
 x = 20;               // write x
 ```
@@ -212,7 +212,7 @@ memory-mapped I/O. Locations in such memory actually communicate with periph‐
 erals, e.g., external sensors or displays, printers, network ports, etc. rather than read‐
 ing or writing normal memory (i.e., RAM). In such a context, consider again the code
 with seemingly redundant reads:
-```
+```cpp
 auto y = x;           // read x
 y = x;                // read x again
 ```
@@ -221,7 +221,7 @@ of x  is not redundant, because  the  temperature may have changed between  the 
 and second reads.
 
 It’s a similar situation for seemingly superfluous writes. In this code, for example,
-```
+```cpp
 x = 10;               // write x
 x = 20;               // write x again
 ```
@@ -233,11 +233,11 @@ commands sent to the radio.
 volatile  is  the way we  tell  compilers  that we’re  dealing with  special memory.  Its
 meaning  to  compilers  is  “Don’t  perform  any  optimizations  on  operations  on  this
 memory.” So if x corresponds to special memory, it’d be declared volatile:
-```
+```cpp
 volatile int x;
 ```
 Consider the effect that has on our original code sequence:
-```
+```cpp
 auto y = x;           // read x
 y = x;                // read x again (can't be optimized away)
 x = 10;               // write x (can't be optimized away)
@@ -258,7 +258,7 @@ for  this kind of work. Compilers are permitted  to  eliminate  such  redundant 
 tions  on  std::atomics.  The  code  isn’t written  quite  the  same way  it  is  for  vola
 tiles,  but  if  we  overlook  that  for  a  moment  and  focus  on  what  compilers  are
 permitted to do, we can say that, conceptually, compilers may take this,
-```
+```cpp
 std::atomic<int> x;
 auto y = x;           // conceptually read x (see below)
 y = x;                // conceptually read x again (see below)
@@ -266,14 +266,14 @@ x = 10;               // write x
 x = 20;               // write x again
 ```
 and optimize it to this:
-```
+```cpp
 auto y = x;           // conceptually read x (see below)
 x = 20;               // write x
 ```
 For special memory, this is clearly unacceptable behavior.
 Now,  as  it  happens,  neither  of  these  two  statements  will  compile  when  x  is
 std::atomic:
-```
+```cpp
 auto y = x;           // error!
 y = x;                // error!
 ```
@@ -294,7 +294,7 @@ It’s possible to get the value of x into y, but it requires use of std::atomic
 functions load and store. The load member function reads a std::atomic’s value
 atomically, while the store member function writes it atomically. To initialize y with
 x, followed by putting x’s value in y, the code must be written like this:
-```
+```cpp
 std::atomic<int> y(x.load());     // read x
 y.store(x.load());                // read x again
 ```
@@ -303,7 +303,7 @@ from  initializing or  storing  to y makes clear  that  there  is no reason  to 
 statement as a whole to execute as a single atomic operation.
 Given  that  code,  compilers  could  “optimize”  it  by  storing  x’s  value  in  a  register
 instead of reading it twice:
-```
+```cpp
 register = x.load();              // read x into register
 std::atomic<int> y(register);     // init y with register value
 y.store(register);                // store register value into y
@@ -319,7 +319,7 @@ cial memory.
 gramming.
 Because std::atomic and volatile serve different purposes, they can even be used
 together:
-```
+```cpp
 volatile std::atomic<int> vai;    // operations on vai are
                                   // atomic and can't be
                                   // optimized away

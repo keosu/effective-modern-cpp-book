@@ -106,7 +106,7 @@ The API  for  futures offers no way  to determine whether a  future  refers  to 
 state arising  from a  call  to std::async,  so given an arbitrary  future object,  it’s not
 possible to know whether it will block in its destructor waiting for an asynchronously
 running task to finish. This has some interesting implications:
-```
+```cpp
 // this container might block in its dtor, because one or more
 // contained futures could refer to a shared state for a non-
 // deferred task launched via std::async
@@ -128,7 +128,7 @@ std::packaged_task object prepares a  function (or other callable object)  for a
 chronous  execution by wrapping  it  such  that  its  result  is put  into  a  shared  state. A
 future referring to that shared state can then be obtained via std::packaged_task’s
 get_future function:
-```
+```cpp
 int calcValue();                      // func to run
 std::packaged_task<int()>             // wrap calcValue so it
   pt(calcValue);                      // can run asynchronously
@@ -144,12 +144,12 @@ std::packaged_task does before it schedules the task for execution.)
 
 std::packaged_tasks  aren’t  copyable,  so when  pt  is  passed  to  the  std::thread
 constructor, it must be cast to an rvalue (via std::move—see Item 23):
-```
+```cpp
 std::thread t(std::move(pt));         // run pt on t
 ```
 This example lends some insight into the normal behavior for future destructors, but
 it’s easier to see if the statements are put together inside a block:
-```
+```cpp
 {                                     // begin block
   std::packaged_task<int()>
     pt(calcValue);

@@ -6,7 +6,7 @@ or,  for std::forward_list, insert_after),  the  type of  element you’ll pass 
 function will be std::string. After all, that’s what the container has in it.
 
 Logical though this may be, it’s not always true. Consider this code:
-```
+```cpp
 std::vector<std::string> vs;         // container of std::string
 vs.push_back("xyzzy");               // add string literal
 ```
@@ -16,7 +16,7 @@ quotes.  A  string  literal  is  not  a  std::string,  and  that means  that  th
 you’re passing to push_back is not of the type held by the container.
 
 push_back for std::vector is overloaded for lvalues and rvalues as follows:
-```
+```cpp
 template <class T,                           // from the C++11
           class Allocator = allocator<T>>    // Standard
 class vector {
@@ -35,7 +35,7 @@ type  of  the  parameter  taken  by  push_back  (a  reference  to  a  std::strin
 address the mismatch by generating code to create a temporary std::string object
 from  the  string  literal,  and  they pass  that  temporary object  to push_back.  In other
 words, they treat the call as if it had been written like this:
-```
+```cpp
 vs.push_back(std::string("xyzzy"));  // create temp. std::string
                                      // and pass it to push_back
 ```
@@ -75,7 +75,7 @@ push_back is the wrong function. The function you want is emplace_back.
 emplace_back does exactly what we desire: it uses whatever arguments are passed to
 it  to construct a std::string directly  inside  the std::vector. No  temporaries are
 involved:
-```
+```cpp
 vs.emplace_back("xyzzy");   // construct std::string inside
                             // vs directly from "xyzzy"
 ```
@@ -84,7 +84,7 @@ perfect forwarding’s limitations (see Item 30), you can pass any number of arg
 of  any  combination  of  types  through  emplace_back.  For  example,  if  you’d  like  to
 create a std::string in vs via the std::string constructor taking a character and
 a repeat count, this would do it:
-```
+```cpp
 vs.emplace_back(50, 'x');   // insert std::string consisting
                             // of 50 'x' characters
 ```
@@ -106,7 +106,7 @@ ment function (the argument thus causes the function to perform copy or move con
 struction), emplacement can be used even when an insertion function would require
 no temporary. In that case, insertion and emplacement do essentially the same thing.
 For example, given
-```
+```cpp
 std::string queenOfDisco("Donna Summer");
 both of  the  following calls are valid, and both have  the  same net effect on  the con‐
 tainer:
@@ -142,7 +142,7 @@ a std::vector vs)  showed  the value being added  to  the end of vs—to a place
 where no object yet existed. The new value therefore had to be constructed into
 the std::vector. If we revise the example such that the new std::string goes
 into a location already occupied by an object, it’s a different story. Consider:
-```
+```cpp
 std::vector<std::string> vs;         // as before
 …                                    // add elements to vs
 vs.emplace(vs.begin(), "xyzzy");     // add "xyzzy" to
@@ -186,7 +186,7 @@ insertion functions.
 
 The  following  calls  from  earlier  in  this  Item  satisfy all  the  criteria above. They also
 run faster than the corresponding calls to push_back.
-```
+```cpp
 vs.emplace_back("xyzzy");   // construct new value at end of
                             // container; don't pass the type in
                             // container; don't use container
@@ -196,7 +196,7 @@ vs.emplace_back(50, 'x');   // ditto
 When deciding whether  to use  emplacement  functions,  two  other  issues  are worth
 keeping  in mind. The  first  regards  resource management. Suppose you have a con‐
 tainer of std::shared_ptr<Widget>s,
-```
+```cpp
 std::list<std::shared_ptr<Widget>> ptrs;
 ```
 and you want to add a std::shared_ptr that should be released via a custom deleter
@@ -207,15 +207,15 @@ that  case,  you must  use  new  directly  to  get  the  raw  pointer  to  be ma
 std::shared_ptr.
 
 If the custom deleter is this function,
-```
+```cpp
 void killWidget(Widget* pWidget);
 ```
 the code using an insertion function could look like this:
-```
+```cpp
 ptrs.push_back(std::shared_ptr<Widget>(new Widget, killWidget));
 ```
 It could also look like this, though the meaning would be the same:
-```
+```cpp
 ptrs.push_back({ new Widget, killWidget });
 ```
 Either  way,  a  temporary  std::shared_ptr  would  be  constructed  before  calling
@@ -238,7 +238,7 @@ Widget”  in  the  call  to  push_back  is  released  in  the  destructor  of  
 std::shared_ptr that was created to manage it (temp). Life is good.
 
 Now consider what happens if emplace_back is called instead of push_back:
-```
+```cpp
 ptrs.emplace_back(new Widget, killWidget);
 ```
 
@@ -278,13 +278,13 @@ to a resource-managing object in a standalone statement, then passing that objec
 an  rvalue  to  the  function  you  originally wanted  to pass  “new  Widget”  to.  (Item  21
 covers this technique in more detail.) The code using push_back should therefore be
 written more like this:
-```
+```cpp
 std::shared_ptr<Widget> spw(new Widget,    // create Widget and
                             killWidget);   // have spw manage it
 ptrs.push_back(std::move(spw));            // add spw as rvalue
 ```
 The emplace_back version is similar:
-```
+```cpp
 std::shared_ptr<Widget> spw(new Widget, killWidget);
 ptrs.emplace_back(std::move(spw));
 ```
@@ -299,13 +299,13 @@ over to a resource-managing object.
   A  second  noteworthy  aspect  of  emplacement  functions  is  their  interaction  with
 explicit  constructors.  In  honor  of C++11’s  support  for  regular  expressions,  sup‐
 pose you create a container of regular expression objects:
-```
+```cpp
 std::vector<std::regex> regexes;
 ```
 Distracted by your colleagues’ quarreling over  the  ideal number of  times per day  to
 check one’s Facebook account, you accidentally write the following seemingly mean‐
 ingless code:
-```
+```cpp
 regexes.emplace_back(nullptr);    // add nullptr to container
                                   // of regexes?
 ```
@@ -314,25 +314,25 @@ complaint,  so  you  end up wasting  a bunch of  time debugging. At  some point,
 discover that you have  inserted a null pointer  into your container of regular expres‐
 sions. But how is that possible? Pointers aren’t regular expressions, and if you tried to
 do something like this,
-```
+```cpp
 std::regex r = nullptr;           // error! won't compile
 ```
 compilers would reject your code. Interestingly, they would also reject it if you called
 push_back instead of emplace_back:
-```
+```cpp
 regexes.push_back(nullptr);       // error! won't compile
 ```
 The  curious  behavior  you’re  experiencing  stems  from  the  fact  that  std::regex
 objects can be constructed from character strings. That’s what makes useful code like
 this legal:
-```
+```cpp
 std::regex upperCaseWord("[A-Z]+");
 ```
 Creation  of  a  std::regex  from  a  character  string  can  exact  a  comparatively  large
 runtime  cost,  so,  to minimize  the  likelihood  that  such  an  expense will  be  incurred
 unintentionally,  the  std::regex  constructor  taking  a  `const  char*`  pointer  is
 explicit. That’s why these lines don’t compile:
-```
+```cpp
 std::regex r = nullptr;           // error! won't compile
 regexes.push_back(nullptr);       // error! won't compile
 ```
@@ -343,7 +343,7 @@ In  the  call  to  emplace_back,  however,  we’re  not  claiming  to  pass  a 
 object. Instead, we’re passing a constructor argument for a std::regex object. That’s
 not considered an implicit conversion request. Rather, it’s viewed as if you’d written
 this code:
-```
+```cpp
 std::regex r(nullptr);           // compiles
 ```
 If the laconic comment “compiles” suggests a lack of enthusiasm, that’s good, because
@@ -355,7 +355,7 @@ lucky, you and your debugger could be in for a special bonding experience.
 
 Setting  aside  push_back,  emplace_back,  and  bonding  for  a moment,  notice  how
 these very similar initialization syntaxes yield different results:
-```
+```cpp
 std::regex r1 = nullptr;         // error! won't compile
 std::regex r2(nullptr);          // compiles
 ```
@@ -370,7 +370,7 @@ But back  to push_back and emplace_back and, more generally,  the  insertion  fu
 tions versus the emplacement functions. Emplacement functions use direct initializa‐
 tion, which means they may use explicit constructors. Insertion functions employ
 copy initialization, so they can’t. Hence:
-```
+```cpp
 regexes.emplace_back(nullptr);  // compiles. Direct init permits
                                 // use of explicit std::regex
                                 // ctor taking a pointer

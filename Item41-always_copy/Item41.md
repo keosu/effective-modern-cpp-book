@@ -1,7 +1,7 @@
 # Item 41: Consider pass by value for copyable parameters that are cheap to move and always copied.
 
 Some function parameters are intended to be copied.(1 In this Item, to “copy” a parameter generally means to use it as the source of a copy or move operation. Recall on page 2 that C++ has no terminology to distinguish a copy made by a copy operation from one made by a move operation. ) For example, a member function addName might copy its parameter into a private container. For efficiency, such a function should copy lvalue arguments, but move rvalue arguments:
-```
+```cpp
 class Widget {
 public:
   void addName(const std::string& newName)    // take lvalue;
@@ -25,7 +25,7 @@ related  to  the existence of  two  functions, but  if  these  functions aren’
 where, you really will get two functions in your object code.
 An alternative approach  is  to make addName a  function  template  taking a universal
 reference (see Item 24):
-```
+```cpp
 class Widget {
 public:
   template<typename T>                          // take lvalues
@@ -55,7 +55,7 @@ user-defined types by value. For parameters  like newName in functions  like add
 pass by value may be an entirely reasonable strategy.
 Before we discuss why pass-by-value may  be  a  good  fit  for  newName  and  addName,
 let’s see how it would be implemented:
-```
+```cpp
 class Widget {
 public:
   void addName(std::string newName)           // take lvalue or
@@ -77,7 +77,7 @@ In C++98,  it was a  reasonable bet  that  it was. No matter what callers passed
 parameter newName would be created by copy construction. In C++11, however, add
 Name will be copy constructed only for  lvalues. For rvalues,  it will be move construc‐
 ted. Here, look:
-```
+```cpp
 Widget w;
 …
 std::string name("Bart");
@@ -95,7 +95,7 @@ rvalue, and newName is therefore move constructed.
 Lvalues are thus copied, and rvalues are moved, just like we want. Neat, huh?
 It  is neat, but  there are  some caveats you need  to keep  in mind. Doing  that will be
 easier if we recap the three versions of addName we’ve considered:
-```
+```cpp
 class Widget {                                  // Approach 1:
 public:                                         // overload for
   void addName(const std::string& newName)      // lvalues and
@@ -124,7 +124,7 @@ I refer to the first two versions as the “by-reference approaches,” because 
 based on passing their parameters by reference.
 
 Here are the two calling scenarios we’ve examined:
-```
+```cpp
 Widget w;
 …
 std::string name("Bart");
@@ -185,7 +185,7 @@ rvalue reference.
 Consider  a  class with  a  std::unique_ptr<std::string>  data member  and  a
 setter  for  it.  std::unique_ptr  is  a  move-only  type,  so  the  “overloading”
 approach to its setter consists of a single function:
-```
+```cpp
 class Widget {
 public:
   …
@@ -196,7 +196,7 @@ private:
 };
 ```
 A caller might use it this way:
-```
+```cpp
 Widget w;
 …
 w.setPtr(std::make_unique<std::string>("Modern C++"));
@@ -205,7 +205,7 @@ Here  the  rvalue  std::unique_ptr<std::string>  returned  from
 std::make_unique (see Item 21) is passed by rvalue reference to setPtr, where
 it’s moved into the data member p. The total cost is one move.
 If setPtr were to take its parameter by value,
-```
+```cpp
 class Widget {
 public:
   …
@@ -227,7 +227,7 @@ see why  this  is  important,  suppose  that  before  copying  its  parameter  i
 names container, addName checks to see if the new name is too short or too long.
 If  it  is, the request to add the name  is  ignored. A pass-by-value  implementation
 could be written like this:
-```
+```cpp
 class Widget {
 public:
   void addName(std::string newName)
@@ -264,7 +264,7 @@ When  a  parameter  is  copied  using  assignment,  the  situation  is more  com
 Suppose,  for  example, we  have  a  class  representing  passwords.  Because  passwords
 can be changed, we provide a setter function, changeTo. Using a pass-by-value strat‐
 egy, we could implement Password like this:
-```
+```cpp
 class Password {
 public:
   explicit Password(std::string pwd)     // pass by value
@@ -278,7 +278,7 @@ private:
 ```
 Storing the password as plain text will whip your software security SWAT team into a
 frenzy, but ignore that and consider this code:
-```
+```cpp
 std::string initPwd("Supercalifragilisticexpialidocious");
 Password p(initPwd);
 ```
@@ -290,7 +290,7 @@ is well.
 A user of this program may not be as sanguine about the password, however, because
 “Supercalifragilisticexpialidocious”  is  found  in  many  dictionaries.  He  or  she  may
 therefore take actions that lead to code equivalent to the following being executed:
-```
+```cpp
 std::string newPassword = "Beware the Jabberwock";
 p.changeTo(newPassword);
 ```
@@ -308,7 +308,7 @@ But in this case, the old password (“Supercalifragilisticexpialidocious”) is
 the new one (“Beware  the  Jabberwock”), so  there’s no need  to allocate or deallocate
 anything.  If  the  overloading  approach were  used,  it’s  likely  that  none would  take 
 place:
-```
+```cpp
 class Password {
 public:
   …
@@ -369,7 +369,7 @@ C++98 ground, so I won’t dwell on  it, but  if you have a function that  is de
 accept a parameter of a base class type or any type derived from it, you don’t want to
 declare a pass-by-value parameter of that type, because you’ll “slice off” the derived-
 class characteristics of any derived type object that may be passed in:
-```
+```cpp
 class Widget { … };                          // base class
 class SpecialWidget: public Widget { … };    // derived class
 void processWidget(Widget w);   // func for any kind of Widget,

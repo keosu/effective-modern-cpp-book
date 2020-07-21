@@ -7,7 +7,7 @@ http://www.cnblogs.com/boydfd/p/5021011.html
 STL中的const_iterator等价于pointers-to-const（指向const值的指针）。它们指向的值不能被修改。使用const的标准做法是，每当你不需要修改iterator指向的值的时候，你都应该使用const_iterator。
 
 这对C++98和C++11来说都是对的，但是在C++98中，const_iterator只能算勉强支持。我们无法简单地创建它们，并且一旦你创建了一个const_iterator，你使用的范围就被限制了。举个例子，假设你想要找到std::vector中的第一个1983（用“C++”替代“C with Classes”来作为名字的那一年），并且在那个位置插入一个1998（那一年，第一个IOS C++标准被采用）。如果vector中没有1983，插入的位置应该是vector的最后面。在C++98中，使用iterator来实现，这很简单：
-```
+```cpp
 std::vector<int> values;
 
 ...
@@ -18,7 +18,7 @@ values.insert(it, 1998);
 ```
 但是iterator在这不是最合适的选择，因为这段代码从来没有修改iterator指向的东西。把代码修改成const_iterator的版本“应该”很简单，但是在C++98中却不简单。这里有一种方法，从概念上来说是可靠的，但是它还是不正确的：
 
-```
+```cpp
 typedef std::vector<int>::iterator IterT;           //typedef
 typedef std::vector<int>::const_iterator ConstIterT;
 
@@ -43,7 +43,7 @@ typedef不是必须的，但是他们让代码中的cast更容易写一些。（
 
 在C++11中，一切都变了。现在const_iterator已经变得容易获得以及容易使用了。容器（即使是non-const容器）的成员函数cbegin和cend产生一个const_iterator，并且原本在STL中，只使用iterator定位（比如，insert和erase）的成员函数现在也能使用const_iterator来定位了。把最初使用iterator的C++98版本的代码修改成使用const_iterator的C++11版本的代码真是太简单了：
 
-```
+```cpp
 std::vector<int> values;
 
 ...
@@ -59,7 +59,7 @@ values.insert(it, 1998);
 
 举个例子，我们能把我们讨论的东西添加到findAndInsert模板中，像下面这样写：
 
-```
+```cpp
 template<typename C, typename V>
 void findAndInsert(C& container,                
                    const V& targetVal,
@@ -79,7 +79,7 @@ void findAndInsert(C& container,
 
 如果你使用C++11，你又想写出最大限度的通用代码，并且在你使用的库中，没有一个库提供那些被遗漏的cbegin（non-member版本的）。那么朋友，你可以轻松地写出你自己的实现，举个例子，这里有一个non-member版本的cbegin的实现：
 
-```
+```cpp
 template<class C>
 auto cbegin(const C& container)->decltype(std::begin(container))
 {

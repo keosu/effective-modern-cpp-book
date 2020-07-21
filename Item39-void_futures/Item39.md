@@ -9,7 +9,7 @@ An obvious approach is to use a condition variable (condvar). If we call the tas
 detects  the  condition  the  detecting  task  and  the  task  reacting  to  the  condition  the
 reacting  task,  the  strategy  is  simple:  the  reacting  task waits on  a  condition variable,
 and the detecting thread notifies that condvar when the event occurs. Given
-```
+```cpp
 std::condition_variable cv;             // condvar for event
 std::mutex m;                           // mutex for use with cv
 the code in the detecting task is as simple as simple can be:
@@ -25,7 +25,7 @@ on the condvar, it must lock a mutex through a std::unique_lock object. (Locking
 a mutex before waiting on a condition variable is typical for threading  libraries. The
 need  to  lock  the mutex  through  a  std::unique_lock  object  is  simply  part  of  the
 C++11 API.) Here’s the conceptual approach:
-```
+```cpp
 …                                      // prepare to react
 {                                      // open critical section
   std::unique_lock<std::mutex> lk(m);  // lock mutex
@@ -79,7 +79,7 @@ good fit for the problem at hand, but this doesn’t seem to be one of them.
 For many developers, the next trick  in their bag  is a shared boolean flag. The flag  is
 initially false. When the detecting thread recognizes the event it’s looking for, it sets
 the flag:
-```
+```cpp
 std::atomic<bool> flag(false);      // shared flag; see
                                     // Item 40 for std::atomic
 …                                   // detect event
@@ -108,7 +108,7 @@ the event of interest has occurred, but access to the flag is synchronized by a 
 Because  the  mutex  prevents  concurrent  access  to  the  flag,  there  is,  as  Item  40
 explains, no need for the flag to be std::atomic; a simple bool will do. The detect‐
 ing task would then look like this:
-```
+```cpp
 std::condition_variable cv;           // as before
 std::mutex m;
 bool flag(false);                     // not std::atomic
@@ -122,7 +122,7 @@ cv.notify_one();                      // tell reacting task
                                       // (part 2)
 ```
 And here’s the reacting task:
-```
+```cpp
 …                                      // prepare to react
 {                                      // as before
   std::unique_lock<std::mutex> lk(m);  // as before
@@ -179,17 +179,17 @@ know when the detecting task has “written” its void data by calling set_valu
 std::promise.
 
 So given
-```
+```cpp
 std::promise<void> p;               // promise for
                                     // communications channel
 ```
 the detecting task’s code is trivial,
-```
+```cpp
 …                                   // detect event
 p.set_value();                      // tell reacting task
 ```
 and the reacting task’s code is equally simple:
-```
+```cpp
 …                                   // prepare to react
 p.get_future().wait();              // wait on future
                                     // corresponding to p
@@ -229,7 +229,7 @@ characteristics such as priority and affinity.
 Assuming you want to suspend a thread only once (after creation, but before it’s run‐
 ning its thread function), a design using a void future is a reasonable choice. Here’s
 the essence of the technique:
-```
+```cpp
 std::promise<void> p;
 void react();                        // func for reacting task
 void detect()                        // func for detecting task
@@ -250,7 +250,7 @@ void detect()                        // func for detecting task
 Because it’s important that t become unjoinable on all paths out of detect, use of an
 RAII class like Item 37’s ThreadRAII seems like it would be advisable. Code like this
 comes to mind:
-```
+```cpp
 void detect()
 {
   ThreadRAII tr(                          // use RAII object
@@ -291,7 +291,7 @@ itself.  The  only  subtlety  is  that  each  reacting  thread  needs  its  own 
 std::shared_future  that  refers  to  the  shared  state,  so  the  std::shared_future
 obtained  from share  is  captured by  value by  the  lambdas  running on  the  reacting
 threads:
-```
+```cpp
 std::promise<void> p;                // as before
 void detect()                        // now for multiple
 {                                    // reacting tasks

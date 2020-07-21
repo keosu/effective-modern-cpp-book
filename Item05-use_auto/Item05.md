@@ -2,14 +2,14 @@
 http://www.cnblogs.com/boydfd/p/4966122.html
 
 啊，简单愉快的代码：
-```
+```cpp
 inr x;
 ```
 等等，讨厌！我忘了初始化x，所以它的值是不确定的。可能，它可能被初始化成了0，这取决于你的编译环境。哎。
 
 不要紧，让我们简单并愉快地声明一个局部变量，通过解引用一个iterator来初始化它：
 
-```
+```cpp
 template<typename It>
 void dwim(It b, It e)
 {
@@ -28,7 +28,7 @@ void dwim(It b, It e)
 
 好的吧，它曾经不是。但是在C++11中，由于auto提供的好意，所有的这些麻烦都离去了。auto变量从初始化表达式中推导它们的类型，所以它们必须被初始化。这意味着，当你快速行驶在现代C++的超级高速公路上时，你能和变量未初始化问题挥手再见了：
 
-```
+```cpp
 int x1;         //可能未初始化
 
 auto x2;        //错误！需要初始化表达式
@@ -37,7 +37,7 @@ auto x3 = 0;    //好的，x的值是良好定义的
 ```
 通过对iterator解引用来声明局部变量时，这个高速公路没有之前那样的困难：
 
-```
+```cpp
 template<typename It>   //和之前一样
 void dwim(It b, It e)
 {
@@ -49,7 +49,7 @@ void dwim(It b, It e)
 ```
 并且，因为auto使用类型推导（看 Item 2），它能表示只有编译器知道的类型：
 
-```
+```cpp
 auto derefUPLess =
     [](const std::unique_ptr<Widget>& p1,
        const std::unique_ptr<Widget>& p2)
@@ -57,7 +57,7 @@ auto derefUPLess =
 ```
 非常酷，在c++14中，温度进一步下降（事情变得更简单），因为lambda表达式的参数可以涉及auto：
 
-```
+```cpp
 auto derefLess =
     [](const auto& p1,
       (const auto& p2)
@@ -67,19 +67,19 @@ auto derefLess =
 
 std::function是C++11标准库中的模板，这个模板扩张了函数指针的概念。函数指针只能指向函数，但是，std::function对象能指向所有可调用对象。也就是，所有能像函数一样用“()”调用的东西。就像你创建函数指针的时候，必须明确指向函数的类型（也就是你想指向的函数的签名），当你传入std::function对象时，你必须明确你引用的函数的类型。你通过std::function模板的参数来做到这一点。举个例子，为了声明一个能调用任何下面函数签名的std::function对象，
 
-```
+```cpp
 bool(const std::unique_ptr<Widget>&,
      const std::unique_ptr<Widget>&)
 ```
 你会这么写：
 
-```
+```cpp
 std::function<bool(const std::unique_ptr<Widget>&,
               const std::unique_ptr<Widget>&)> func;
 ```
 因为lambda表达式产生一个可调用对象，所以闭包能被存放在std::function对象中。这意味着我们能不使用auto就声明一个C++11版本的derefUpLess：
 
-```
+```cpp
 std::function<bool(const std::unique_ptr<Widget>&,
               const std::unique_ptr<Widget>&)>
     derefUpLess = [](const std::unique_ptr<Widget>& p1,
@@ -90,7 +90,7 @@ std::function<bool(const std::unique_ptr<Widget>&,
 
 auto的优点不局限于避免未初始化的变量，冗长的变量声明和直接闭包的声明。它的另外一个能力就是能避免我们由于使用“类型快捷方式”（“type shortcuts”）而造成问题。这里给出一些你看起来会做的事，你可能会这么写：
 
-```
+```cpp
 std::vector<int> v;
 ...
 unsigned sz = v.size();
@@ -98,12 +98,12 @@ unsigned sz = v.size();
 v.size()的官方返回类型是std::vector::size_type，但是很少有开发者意识到这点。std::vector::size_type常被指定为无符号整形，所以很多开发者认为unsigned够用了，并写代码时也会像上面这么写。这会造成一些有趣的结果。举个例子，在32位的Windows下，unsigned和std::vector::size_type大小是一样的。但是64位Windows下，unsigned是32位的，而std::vector::size_type是64位的。这意味着工作在32位Windows和工作在64位Windows下会表现的不一样，当把你的程序从32位移植到64下时，没有人希望遇到这样的问题。
 
 使用auto能保证你不会遇到这样的问题：
-```
+```cpp
 auto sz = v.size(); //sz的类型是std::vector<int>::size_type
 ```
 难道你还不肯定使用auto的智慧？那再看看这代码：
 
-```
+```cpp
 std::unordered_map<std::string, int> m;
 ...
 
@@ -115,7 +115,7 @@ for(const std::pair<std::string, int>& p : m)
 这看起来很有道理，但是这里存在一个问题，你看到了吗？
 
 想想看什么需要记住的东西遗漏了，std::unordered_map的键的部分是const的，所以在hash table（std::unordered_map的存储类型）中的std::pair的类型不是std::pair，它是std::pair(译注：
-```
+```cpp
 //这是stl源码书中看到的hash_map的类型定义， 可以看到
 //它的类型是pair<const Key, T>
 typedef hashtable<pair<const Key, T>, Key, HashFcn,
@@ -126,7 +126,7 @@ typedef hashtable<pair<const Key, T>, Key, HashFcn,
 
 这样无意识的类型不匹配能通过auto来消除：
 
-```
+```cpp
 for(const auto& p : m)
 {
     ... //as before

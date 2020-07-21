@@ -4,7 +4,7 @@
 博客已经迁移到这里啦
 
 一般情况下，在花括号中声明一个name（包括变量名，函数名），这个name的可见性会被限制在花括号的作用域内。对于在C++98风格的enum中声明的enum成员却不是这样。这些enum成员的name属于的作用域是enum所在作用域，这意味着在这个作用域中，不能拥有相同的name:
-```
+```cpp
 enum Color { black, white, red };   //black，white，red
                                     //和Color在同一个作用域
 auto white = false;                 //错误！white在这个
@@ -12,7 +12,7 @@ auto white = false;                 //错误！white在这个
 ```
 所以事实上，这些enum成员name泄露到enum所在的作用域中去了，这导致官方对于这种enum给出了一个官方术语：unscoped。新的C++11中有一个与此相对应的版本：scoped enum，不会像这样让name泄露：
 
-```
+```cpp
 enum class Color { black, white, red }; //black，white red
                                         //在Color作用域中
 
@@ -28,7 +28,7 @@ auto c = Color::white;                  //也是对的（而且和Item 5的建�
 
 单是减少命名空间的污染就足够作为理由让我们更偏爱scoped enum了，但是scoped enum还有第二个压倒性的优点：它们的成员属于强类型。unscoped enum的成员能隐式转换到数值类型（然后，从数值类型，可以转换到浮点类型）。因此像下面这样，在语义上是扭曲的代码是完全有效的：
 
-```
+```cpp
 enum Color { black, white, red};        //unscoped enum
 
 
@@ -47,7 +47,7 @@ if(c < 14.5) {                  //把Color和double数比较（！）
 ```
 然而，在”enum“后面添加一个简单的”class“，就能把unscoped enum转变为scoped enum，并且情况会发生很大的改变。这里没有从enum的成员到任何其它类型的隐式转换：
 
-```
+```cpp
 enum class Color { black, white, red }; //scoped
 
 Color c = Color::red;                   
@@ -63,7 +63,7 @@ if (c < 14.5) {                 //错误，不能把Color和double
 ```
 如果你真的想要把Color转换到不同的类型，你需要做的就是：使用cast把Color转换成你需要的类型：
 
-```
+```cpp
 if(static_cast<double>(c) < 14.5) { //奇怪的代码，但是有效
 
     auto factors =                  //可疑的，但是能通过编译
@@ -73,19 +73,19 @@ if(static_cast<double>(c) < 14.5) { //奇怪的代码，但是有效
 ```
 比起unscoped enum，scoped enum看起来还有第三个优点，因为scoped enum可以前置声明。也就是，他们的name可以在声明的时候不定义（不明确它们的成员）：
 
-```
+```cpp
 enum Color;         //错误
 
 enum class Color;   //对的
 ```
 这是一个误导。在C++11中，unscoped enum也能前置声明，但是需要做一些额外的工作。这个工作源于一个事实，就是C++中的每个enum都有一个整形的基础类型，这个类型由编译器决定。对于一个unscoped enum，比如Color：
 
-```
+```cpp
 enum Color { black, white, red };
 ```
 编译器可能选择char来作为基础类型，因为这里只有三个值需要表示。然而，一些enum值的范围会大很多，比如：
 
-```
+```cpp
 enum Status { good = 0,
               failed = 1,
               incoplete = 100,
@@ -99,7 +99,7 @@ enum Status { good = 0,
 
 但是“不能前置声明enum”是有缺点的。最需要注意的是，它可能会增加编译依赖性。再次考虑Status enum：
 
-```
+```cpp
 enum Status { good = 0,
               failed = 1,
               incomplete = 100,
@@ -109,7 +109,7 @@ enum Status { good = 0,
 ```
 这个enum可能需要在某个系统中使用，因此它被包含在头文件中，然后系统的每个部分都需要依赖它。如果一个新的status值被添加进来，
 
-```
+```cpp
 enum Status { good = 0,
               failed = 1,
               incomplete = 100,
@@ -120,7 +120,7 @@ enum Status { good = 0,
 ```
 这样很有可能整个系统都需要重新编译，甚至如果只是一个简单的子系统（更甚一个简单的函数）使用了这个enum。这是被人们所讨厌的。这也是在C++11中，enum前置声明消除的事（编译依赖性）。举个例子，这里有一个scoped enum的声明，它是完美有效的。并且一个函数用它作为一个参数：
 
-```
+```cpp
 enum class Status;                  //前置声明
 
 void continueProcessing(Status s);  //使用声明过的enum
@@ -131,12 +131,12 @@ void continueProcessing(Status s);  //使用声明过的enum
 
 通常情况下，一个scoped enum的基础类型是int：
 
-```
+```cpp
 enum class Status;                  //基础类型是int
 ```
 如果默认的情况不适合你，你可以自己设置：
 
-```
+```cpp
 enum class Status: std::uint32_t;   //Status的基础类型是
                                     //std::uint32_t
 ```
@@ -144,13 +144,13 @@ enum class Status: std::uint32_t;   //Status的基础类型是
 
 为了明确一个unscoped enum的基础类型，你需要做和scoped enum同样的事，这样就能做到前置声明了：
 
-```
+```cpp
 enum Color: std::uint8_t;           //unscoped enum的前置声明
                                     //基础类型是std::uint8_t
 ```
 基础类型也可以在enum定义的时候明确：
 
-```
+```cpp
 enum class Status: std::uint32_t { good = 0,
                                    failed = 1,
                                    incomplete = 100,
@@ -162,7 +162,7 @@ enum class Status: std::uint32_t { good = 0,
 基于scoped enum能避免命名空间的污染，不会进行无意义的隐式类型转换的事实，这可能让你感到奇怪：这里起码有一种情况，unscoped enum比起scoped enum会更有用一些。
 比如我们在使用C++11的std::tuple的字段时。举个例子，假设对于一个社交网站的用户，我们想设计一个tuple持有name，email地址，reputation值：
 
-```
+```cpp
 using UserInfo =
     std::tuple<std::string,     //name
                std::string,     //email 
@@ -170,7 +170,7 @@ using UserInfo =
 ```
 只通过注释标明每个字段，那么在碰到分离的源文件时，注释将没有作用：
 
-```
+```cpp
 UserInfo uInfo;                 //tuple类型的对象
 ...
 
@@ -178,7 +178,7 @@ auto val = std::get<1>(uInfo);  //取字段1的值
 ```
 作为一个程序员，你有很多方式来记录它。你真的能记住字段1代表的是用户的email地址吗？我想不是这样的。使用一个unscoped enum把名字关联到字段中去：
 
-```
+```cpp
 enum UserInfoFields { uiName, uiEmail, uiReputation };
 
 UserInfo uInfo;                 
@@ -190,7 +190,7 @@ auto val = std::get<uiEmail>(uInfo);    //获得email字段的值
 
 用scoped enum实现的相应的代码会变得很繁琐：
 
-```
+```cpp
 enum class UserInfoFields { uiName, uiEmail, uiReputation };
 
 UserInfo uInfo;
@@ -203,7 +203,7 @@ auto val =
 
 事实上，它应该是constexpr函数template，因为它应该能在任何enum下工作。并且如果我们让它继续泛化，我们应该把返回类型也泛化掉。比起返回一个std::size_t，我们需要返回enum的基础类型。通过std::underlying_type能做到这一点。（看Item 9中的type traits信息）最后，我们声明它为noexcept（看Item 14），因为我们知道它不会产生任何异常。最后会产生一个编译期const函数template toUType，它需要一个任意类型的enum成员，并且返回它的值（类型是基础类型）:
 
-```
+```cpp
 template<typename E>
 constexpr typename std::underlying_type<E>::type
   toUType(E enumerator) noexcept
@@ -215,7 +215,7 @@ constexpr typename std::underlying_type<E>::type
 ```
 在C++14中，通过用强大的std::underlying_type_t(看Item 9)来替换typename std::underlying_type::type,toUType能被简化:
 
-```
+```cpp
 template<typename E>                    // C++14
 constexpr std::underlying_type_t<E>
   toUType(E enumerator) noexcept
@@ -225,7 +225,7 @@ constexpr std::underlying_type_t<E>
 ```
 在C++14中，更强大的auto返回类型（看Item 3）也同样有效：
 
-```
+```cpp
 template<typename E>                    // C++14
 constexpr auto
   toUType(E enumerator) noexcept
@@ -235,7 +235,7 @@ constexpr auto
 ```
 不管函数怎么写，toUType允许我们这样访问tuple字段：
 
-```
+```cpp
 auto val = std::get<toUType(UserInfoFields::uiEmail)>(uInfo);
 ```
 比起使用unscoped enum，这里还是要写很多东西，但是它也避免了命名空间的污染，和你没有意识到的转换。在很多情况下，比起它的陷阱，你可能觉得多写几个字是合理（但是追溯到很久以前我们的数字通信还在用2400波特的调制解调器时，情况会不一样）。

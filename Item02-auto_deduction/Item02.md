@@ -6,34 +6,34 @@
 是这样的，但是这没关系。从template类型推导到auto类型推导有一个直接的映射关系。这里有一个直接的算法来从template类型推导转换到auto类型推导。
 
 在item 1中，template类型推导是解释通用函数模板：
-```
+```cpp
 template<typename T>
 void f(ParamType param);
 ```
 并且这样简单调用：
-```
+```cpp
 f(expr);
 ```
 对于f的调用，编译器用expr来推导T和ParamType的类型。
 
 当一个变量用auto来声明时，auto扮演着的角色相当于template中的T，并且变量的类型相当于ParamType。直接举个例子会更简单一些：
 
-```
+```cpp
 auto x = 27;
 ```
 这里，x的类型就是auto自身，另一方面，在这个声明中：
 
-```
+```cpp
 const auto cx = x;
 ```
 类型是const auto，然后：
 
-```
+```cpp
 const auto& rx = x;
 ```
 的类型是const auto&.为了推导x，cx，rx的类型，编译器表现地好像这里有template的声明，并且用初始化表达式调用相应的template：
 
-```
+```cpp
 tamplate<typename T>        //概念上的x的template类型推导
 void func_for_x(T param);
 
@@ -60,7 +60,7 @@ item 1基于ParamType的不同情况，把template的类型推导分成三种情
 情况3：变量类型不是指针也不是引用。
 我们已经看过情况1和情况3的例子了：
 
-```
+```cpp
 auto x = 27;        //情况3
 
 const auto cx = x;  //情况3
@@ -69,7 +69,7 @@ const auto& rx = x; //情况1
 ```
 你可以把情况2想象成这样：
 
-```
+```cpp
 auto&& uref1 = x;   //x是int，并且是左值，
                     //所以uref1的类型是int&
 
@@ -81,7 +81,7 @@ auto&& uref3 = 27；  //27是int，并且是右值，
 ```
 item 1讨论了当类型是non-reference时，数组和函数退化成指针的情况，这样的情况也发生在auto类型推导中：
 
-```
+```cpp
 const char name[] = "R. N. Brigs";
                     //name的类型是 const char[13]
 
@@ -102,13 +102,13 @@ auto& func2 = someFunc;
 
 除了一个情况下，他们是不同的。我们从观察一个情况开始，如果你想用27声明一个int变量，C++98允许你使用两种不同的语法：
 
-```
+```cpp
 int x1 = 27;
 int x2(27);
 ```
 c++11中，通过它对标准初始化的支持，增加了这些操作：
 
-```
+```cpp
 int x3 = {27};
 int x4{27}；
 ```
@@ -116,7 +116,7 @@ int x4{27}；
 
 但是根据item 5的解释，声明变量时，用auto来替换确切的类型有几点好处，所以在上面的变量声明中，用auto来替换int是有好处的。直接的文本替换可以产生这样的代码：
 
-```
+```cpp
 auto x1 = 27;
 auto x2(27);
 auto x3 = {27}；
@@ -124,7 +124,7 @@ auto x4{27};
 ```
 这些声明都能编译，但是在用auto替换后，它们拥有了不同的解释。前两条语句确实声明了值为27的int变量。然而，后面两条语句，声明的变量类型为带有值为27的std::initializer_list ！
 
-```
+```cpp
 auto x1 = 27;   //类型是int， 值是27
 auto x2(27);    //同上
 auto x4{27};    //同上
@@ -134,7 +134,7 @@ auto x3 = {27}; //类型是 std::initializer_list<int>
 ```
 产生这样的结果是由于auto的特殊的类型推导规则。当用初始化列表的形式来初始化auto声明的变量时，推导出来的类型就是std::initializer_list,下面这样的代码是错误的：
 
-```
+```cpp
 auto x5 ={1, 2, 3.0};    //错误！ 不能推导
                         //std::initializer_list<T>中的T
 ```
@@ -142,7 +142,7 @@ auto x5 ={1, 2, 3.0};    //错误！ 不能推导
 
 auto类型推导和template类型推导唯一的不同之处，就是对待初始化列表的不同做法。当用初始化列表来声明auto类型的变量时，推导出来的类型是std::initializer_list的一个实例。但是如果传入同样的初始化列表给template，类型推导将会失败，并且代码编译不通过：
 
-```
+```cpp
 auto x = {11, 23, 9};   //类型是std::initializer_list<int>
 
 template<typename T> 
@@ -152,7 +152,7 @@ f({11, 23, 9}); //错误！不能推导T的类型
 ```
 然而如果你明确template的参数为std::initializer_list，template类型推导将成功推导出T：
 
-```
+```cpp
 template<typename T>
 void f(std::initializer_list<T> initList);
 
@@ -166,7 +166,7 @@ important to bear this in mind if you embrace the philosophy of uniform initiali
 
 对于C++11来说，故事已经完结了，但是对C++14来说，故事还将继续。C++14允许auto作为函数的返回值，并且在lambdas表达式中可能用auto来作为形参类型。然而，auto的这些用法使用的是template类型推导规则，而不是auto类型推导规则。所以返回一个初始化列表给auto类型的函数返回值将不能通过编译：
 
-```
+```cpp
 auto createInitList()
 {
     return {1, 2, 3};   //错误！不能推导{1，2，3}的类型
@@ -174,7 +174,7 @@ auto createInitList()
 ```
 在C++14中，这对于作为lambdas表达式的参数声明的auto类型同样适用：
 
-```
+```cpp
 std::vector<int> v;
 ...
 

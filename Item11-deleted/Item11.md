@@ -11,7 +11,7 @@
 在C++98中，阻止这些函数的方法是：把它们声明成private的，并且不去定义它们。举个例子，C++标准库中的iostream类层次的底层有个class template叫做basic_ios。所有istream和ostream继承自（可能不是直接地）这个类。拷贝istream和ostream是不受欢迎的，因为没有一个清晰的概念规定这些操作应该做些什么。举个例子，一个istream对象表示一些输入值的流，有些值已经被读过了，有些值可能会在之后读入。如果一个istream被拷贝，那么是否有必要拷贝所有之前读过以及以后要读的值呢？处理这个问题的最简单的办法就是，定义它们为不存在的。要做到这点，只需要禁止stream的拷贝就行了。
 
 为了使istream和ostream类不能拷贝，basic_ios在C++98中如此实现（包括注释）：
-```
+```cpp
 template<class charT, class traits = char_traits<charT> >
 class basic_ios　: public ios_base{
 public:
@@ -26,7 +26,7 @@ private:
 
 在C++11中，有更好的办法，它能在本质上实现所需的功能：使用“=delete”来标记copy 构造函数和copy assignment operator，让它们成为deleted函数。这里给出C++11中的basic_ios的实现：
 
-```
+```cpp
 template<calss charT, class trais = char_traits<charT> >
 class basi_ios : public ios_base{
 public:
@@ -45,7 +45,7 @@ public:
 bool isLucky(int number);
 C++是从C继承来的，这意味着很多其它类型能被模糊地视为数值类型，然后隐式转换到int，但是一些能通过编译的调用是没有意义的：
 
-```
+```cpp
 if(isLucky('a')) ...            //'a'是一个幸运数字吗？
 
 if(isLucky(true))...            //"true"是幸运数字吗？
@@ -57,7 +57,7 @@ if(isLucky(3.5))...             //在检查它的幸运属性前，我们是否�
 
 一种方式是用我们想过滤掉的类型创建deleted重载：
 
-```
+```cpp
 bool isLucky(int number);
 
 bool isLucky(char) = delete;         //拒绝char
@@ -70,7 +70,7 @@ bool isLucky(double) = delete;       //拒绝double和float
 
 尽管deleted函数不能被使用，它们还是你程序中的一部分。因此，它们在重载解析时，它们会被考虑进去。这就是为什么只要使用上面这样的deleted函数声明式，令人讨厌的调用就被拒绝了：
 
-```
+```cpp
 if(isLucky('a')) ...            //错误，调用一个deleted函数
 
 if(isLucky(true))...            //错误
@@ -79,7 +79,7 @@ if(isLucky(3.5))...             //错误
 ```
 deleted函数还有一个使用技巧（private 成员函数做不到），那就是阻止不需要的template实例。举个例子，假设你需要一个使用built-in指针的template（第四章的建议是，比起raw指针，优先使用智能指针）：
 
-```
+```cpp
 template<typename T>
 void processPointer(T* ptr);
 ```
@@ -87,7 +87,7 @@ void processPointer(T* ptr);
 
 这很容易执行，只要把他们的实例删除（delete）掉：
 
-```
+```cpp
 template<>
 void processPointer<void>(void*) = delete;
 
@@ -96,7 +96,7 @@ void processPointer<char>(char*) = delete;
 ```
 现在，我们用`void*`或者`char*`调用processPointer是无效的，`const void*`和`const char*`可能也需要是无效的，因此，这些实例也需要被删除（delete）：
 
-```
+```cpp
 template<>
 void processPointer<const void>(const void*) = delete;
 
@@ -107,7 +107,7 @@ void processPointer<const char>(const char*) = delete;
 
 有意思的是，如果你有一个函数template内嵌于一个class，然后你想通过把特定的实例声明为private（啊啦，典型的C++98的方法）来使它们无效，这是无法实现的，因为你无法把一个成员函数template特化为不同的访问等级（和主template的访问等级不同）。举个例子，如果processPointer是一个内嵌于Widget的成员函数template，然后你想让`void*`指针的调用失效，尽管无法通过编译，C++98的方法看起来像是这样：
 
-```
+```cpp
 class Widget{
 public:
     ...
@@ -122,7 +122,7 @@ private:
 ```
 问题在于template特化必须写在命名空间的作用域中，而不是类的作用域中。这个问题不会影响deleted函数，因为他们不需要不同的访问等级。他们能在class外面被删除（因此处在命名空间的作用域中）：
 
-```
+```cpp
 class Widget{
 public:
     ...

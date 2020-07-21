@@ -8,7 +8,7 @@ http://blog.csdn.net/boydfd/article/details/50637267
 你可能会奇怪std::weak_ptr有什么用。当你检查std::weak_ptr的API时，你可能会更奇怪。它看起来一点也不智能。std::weak_ptr不能解引用，不能检查指针是否为空。这是因为std::weak_ptr不是独立的智能指针。它是std::shared_ptr的附加物。
 
 它们的联系从出生起就存在了。std::weak_ptr常常创造自std::shared_ptr。std::shared_ptr初始化它们时，它们指向和std::shard_ptr指向的相同的位置，但是它们不影响它们所指向对象的引用计数：
-```
+```cpp
 auto spw = std::make_shared<Widget>();          //spw被构造之后，被指向的Widget
                                                 //的引用计数是1（关于std::make_shared
                                                 //的信息，看Item 21）
@@ -27,21 +27,21 @@ spw = nullptr;                                  //引用计数变成0，并且Wi
 ## weak_ptr失效检查
 悬挂的std::weak_ptr被称为失效的（expired）。你能直接检查它：
 
-```
+```cpp
 if(wpw.expired())...                            //如果wpw不指向一个对象
 ```
 但是为了访问std::weak_ptr指向的对象，你常常需要检查看这个std::weak_ptr是否已经失效了或者还没有失效（也就是，它没有悬挂）。想法总是比做起来简单，因为std::weak_ptr没有解引用操作，所以没办法写出相应的代码。即使能写出来，把解引用和检查分离开来会造成竞争条件：在调用expired和解引用操作中间，另外一个线程可能重新赋值或者销毁std::shared_ptr之前指向的对象，因此，会造成你想解引用的对象被销毁。这样的话，你的解引用操作将产生未定义行为。
 
 你需要的是一个原子操作，它能检查看std::weak_ptr是否失效了，并让你能访问它指向的对象。从一个std::weak_ptr来创造std::shared_ptr就能达到这样的目的。你拥有的std::shared_ptr是什么样的，依赖于在你用std::weak_ptr来创建std::shared_ptr时是否已经失效了。操作有两种形式，一种是std::weak_ptr::lock，它返回一个std::shared_ptr。如果std::weak_ptr已经失效了，std::shared_ptr会是null:
 
-```
+```cpp
 std::shared_ptr<Widget> spw1 = wpw.lock();      //如果wpw已经失效了，spw1是null
 
 auto spw2 = wpw.lock();                         //和上面一样，不过用的是auto
 ```
 另一种形式是参数为std::weak_ptr的std::shared_ptr的构造函数。这样情况下，如果std::weak_ptr已经失效了，会有一个异常抛出：
 
-```
+```cpp
 std::shared_ptr<Widget> spw3(wpw);          //如果wpw已经失效了，抛出一个
                                             //std::bad_weak_ptr异常
 ```
@@ -49,7 +49,7 @@ std::shared_ptr<Widget> spw3(wpw);          //如果wpw已经失效了，抛出�
 ## weak_ptr应用 - 对象池
 但是你可能还是对std::weak_ptr的用途感到奇怪。考虑一个工厂函数，这个函数根据唯一的ID，产生一个指向只读对象的智能指针。与Item 18的建议相符合，考虑工厂函数的返回类型，它返回一个std::unique_ptr：
 
-```
+```cpp
 std::unique_ptr<const Widget> loadWidget(WidgetId id);
 ```
 如果loadWidget是一个昂贵的调用（比如，它执行文件操作或者I/O操作）并且对ID的反复使用是允许的，我们可以做一个合理的优化：写一个函数，这个函数做loadWidget做的事，但是它也缓存下它返回的结果。但是把所有请求的Widget都缓存下来会造成效率问题，所以另一个合理的优化是：当Widget不再使用时，销毁它的缓存。
@@ -58,7 +58,7 @@ std::unique_ptr<const Widget> loadWidget(WidgetId id);
 
 这里给出一个缓存版本的loadWidget的快速实现：
 
-```
+```cpp
 std::shared_ptr<const Widget> fastLoadWidget(WidgetID id)
 {
     static std::unordered_map<WidgetID, 

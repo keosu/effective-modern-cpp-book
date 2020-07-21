@@ -12,7 +12,7 @@ void f(ParamType param);
 `f(expr);`
 
 编译器需要根据expr的来推断两个类型，一个是T， 一个是ParamType，这两个类型通常是不一样的，因为ParamType通常会含有修饰符，例如const，例如以下代码
-```
+```cpp
 template <typename T>
 void f(const T& param);
 
@@ -38,12 +38,12 @@ int x = 0;
 - 通过模式匹配expr 的类型来决定ParamType 的类型从而决定T 的类型（Then pattern-match expr’s type against ParamType to determine T. ）
 
 例子如下
-```
+```cpp
 template <typename T>
  void f(T& param); 
 ```
 然后我们定义一下变量
-```
+```cpp
 int x = 27;
 const int cx = x;
 const int &rx = x;
@@ -54,13 +54,13 @@ const int &rx = x;
  f(rx);   // T 的类型为const int, ParamType的类型为const int&
 ```
 值得注意的是f(rx)，rx是引用类型，但是编译器会把引用忽略，然后用去掉引用后的参数类型来匹配T 。如果ParamType为右值引用，推断的原则也是相同。但是如果为const引用，就会与上面的结果有点不一样，参考下面的例子。
-```
+```cpp
 template <typename T>
 void f(const T& param);
 ```
 定义的变量和上面的一致
 
-```
+```cpp
 int x = 27;
 const int cx = x;
 const int &rx = x;
@@ -72,7 +72,7 @@ f(rx);   // T 的类型为int, ParamType的类型为const int&
 因为我们在定义声明模板的时候参数类型已经认定了是const引用，所以T 的类型不再需要推断出const。而rx的引用依旧被忽略。
 
 如果把引用换成指针，原则基本一致，把expr的指针类型忽略，例子如下
-```
+```cpp
 template <typename T>
 void f(T* param);
 int x = 27;
@@ -89,7 +89,7 @@ f(px);   // T的类型为const int，ParamType的类型为const int*
 - 如果expr是一个右值，那么会用正常的推断方式(情况1) (和情况1相同，const属性可以代入模板函数内部)
 
 可以看以下代码
-```
+```cpp
 template <typename T>
 void f(T&& param);
 
@@ -105,7 +105,7 @@ f(27); // 27是右值，根据情况1，T的类型会被推断为int、ParamType
 ## 情况3 ParamType 既不是指针类型也不是引用类型
 
 如果ParamType 既不是指针也不是引用，那么参数是通过值传递(pass-by-value)的
-```
+```cpp
 template <typename T>
 void f(T param);    // 此处会有拷贝(构造)
 ```
@@ -114,7 +114,7 @@ void f(T param);    // 此处会有拷贝(构造)
 2. 忽略掉expr的引用以后，如果expr 的类型是const的，把const也忽略了，还会忽略volatile(volatile对象用的比较少，一般它用于实现设备驱动。参见Item40)。
 
 给出下面的例子
-```
+```cpp
 int x = 27;
 const int cx = x;
 const int &rx = x;
@@ -126,7 +126,7 @@ f(rx);  // 忽略了引用后再忽略const,T和ParamType的类型都是int
 注意虽说cx和rx都代表const数值，但是param不是const。这是合理的，param是一个完全独立于cx和rx的对象-cx和rx的拷贝。cx和rx不能被修改的事实其实和param能否被修改毫无关系。这就是为何expr的const和volatile被忽略的原因：仅仅因为expr不能被修改并不意味着它的副本不能被修改。
 
 认识到传值过程中const、volatile被忽略是非常重要的。就像我们已经看到的那样，引用传参或者指针传参时expr的const是被保留的。但是考虑下面这种情形，expr是一个指向const对象的const指针，并且expr通过传值给形参param:
-```
+```cpp
 template<typename T>
 void f(T param); //param is still passed by value
 
@@ -141,12 +141,12 @@ const char* const ptr = // ptr is const pointer to const object
 ## 数组作为参数
 
 在情况3下，如果传入的参数是数组，会转化为指针类型，例如 
-```
+```cpp
 const char name[] = "J. R. Briggs"; // name的类型是const char[13] 
 f(name); // T会被推断为 const char * 
 ```
 但在情况1下 
-```
+```cpp
 template <typename T> 
 void f(T& param); 
 ```
@@ -157,7 +157,7 @@ f(name); // T 的类型会被推断为const char [13]
 > Yes, the syntax looks toxic, but knowing it will score you mondo points with those few souls who care.
 
 利用这个特性可以写一个模板，用来返回数组的长度:
-```
+```cpp
 template <typename T, std::size_t N>
 constexpr std::size_t arraySize(T (&)[N]) noexcept
 {
@@ -172,12 +172,12 @@ constexpr std::size_t arraySize(T (&)[N]) noexcept
 `void someFunc(int, double); `
 
 情况3 
-```
+```cpp
 template <typename T> 
 void f1(T param)； 
 ```
 情况1 
-```
+```cpp
 template <typename T> 
 void f(T& param)；
 

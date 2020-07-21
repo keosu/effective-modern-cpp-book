@@ -6,7 +6,7 @@ http://blog.csdn.net/boydfd/article/details/50822092
 std::move和std::forward只不过就是执行cast的两个函数（实际上是函数模板）。std::move无条件地把它的参数转换成一个右值，而std::forward只在特定条件满足的情况下执行这个转换。就是这样了，我的解释又引申出一系列的新问题，但是，基本上来说，上面说的就是全部内容了。
 
 为了让内容更加形象，这里给出C++11中std::move实现的一个例子。它没有完全遵循标准的细节，但是很接近了。
-```
+```cpp
 template<typename T>                                //在命名空间std中
 typename remove_reference<T>::type&&
 move(T&& param)
@@ -23,7 +23,7 @@ move(T&& param)
 
 说句题外话，在c++14中std::move能被实现得更简便一些。多亏了函数返回值类型推导（看Item 3）以及标准库的别名模板std::remove_reference_t（看Item 9），std::move能被写成这样：
 
-```
+```cpp
 template<typename T>
 decltype(auto) move(T&& param)
 {
@@ -39,7 +39,7 @@ decltype(auto) move(T&& param)
 
 事实上，右值是move的唯一候选人。假设你写了一个代表注释的类。这个类的构造函数有一个std::string的参数，并且它拷贝参数到一个数据成员中。根据Item 41中的信息，你声明一个传值的参数：
 
-```
+```cpp
 class Annotation {
 public:
     explicit Annotation(std::string text);      // 要被拷贝的参数
@@ -49,7 +49,7 @@ public:
 ```
 但是Annotation的构造函数只需要读取text的值。它不需要修改它。为了符合历史传统（把const用在任何可以使用的地方），你修改了你的声明，因此text成为了const的：
 
-```
+```cpp
 class Annotation {
 public:
     explicit Annotation(const std::string text)
@@ -58,7 +58,7 @@ public:
 ```
 为了在拷贝text到数据成员的时候不把时间浪费在拷贝操作上，你保持Item 41的建议并且把std::move用在text上，因此产生了一个右值：
 
-```
+```cpp
 class Annotation {
 public:
     explicit Annotation(const std::string text)
@@ -75,7 +75,7 @@ private：
 
 考虑一下const对于编译器决定调用哪个std::string构造函数有什么影响。这里有两种可能：
 
-```
+```cpp
 class string {                      // std::string实际上是
 public:                             // std::basic_string<char>的一个typedef
     ...
@@ -90,7 +90,7 @@ public:                             // std::basic_string<char>的一个typedef
 
 std::forward的情况和std::move相类似，但是std::move是无条件地把它的参数转换成右值的，而std::forward只在确定条件下才这么做。std::forward是一个有条件的转换。为了理解它什么时候转换，什么时候不转换，回忆一下std::forward是怎么使用的。最常见的情况就是，一个带universal引用的参数被传给另外一个参数：
 
-```
+```cpp
 void process(const Widget& lvalArg);            // 参数为左值
 void process(Widget&& rvalArg);                 // 参数为右值
 
@@ -106,7 +106,7 @@ void logAndProcess(T&& param)                   // 的模板
 ```
 考虑一下两个logAndProcess调用，一个使用左值，另外一个使用右值：
 
-```
+```cpp
 Widget w;
 
 logAndProcess(w);               // 用左值调用
@@ -122,7 +122,7 @@ logAndProcess(std::move(w));    // 用右值调用
 
 std::move的优点是方便，减少相似的错误，并且更加清晰。考虑一个类，对于这个类我们想要记录它的move构造函数被调用了多少次。一个能在move构造的时候自增的static计数器就是我们需要的东西了。假设这个类中唯一的非static数据是一个std::string，这里给出通常的办法（也就是使用std::move）来实现move构造函数：
 
-```
+```cpp
 class Widget {
 public:
     Widget(Widget&& rhs)
@@ -140,7 +140,7 @@ private:
 ```
 为了用std::forward来实现相同的行为，代码看起来像是这样的：
 
-```
+```cpp
 class Widget {
 public:
     Widget(Wdiget&& rhs)                    //不常见，以及不受欢迎的实现

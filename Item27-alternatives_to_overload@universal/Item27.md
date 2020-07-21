@@ -16,7 +16,7 @@ Item 26中的第一个例子（logAndAdd）就是一个典型的例子，很多�
 ## 传值
 
 一个常常能让你提升效率并且不增加复杂性的办法是把传引用的参数替换成传值的参数。虽然这很不直观，但这个设计遵守了Item 41的建议（当知道你需要拷贝一个对象时，直接通过传值来传递它）。所以，对于它们怎么工作以及它们有多高效的细节部分，我会推迟到Item 41再讨论。在这，我只是给你看一下这个技术怎么用在Person例子中去：
-```
+```cpp
 class Person {
 public:
     explicit Person(std::string n)  // 替换T&&构造函数对于
@@ -42,7 +42,7 @@ private:
 
 我们把tag dispatch永在logAndAdd177页的例子上去。为了避免你分神去找，这里给出那个例子的代码：
 
-```
+```cpp
 std::multiset<std::string> names;                   // 全局数据结构
 
 
@@ -60,7 +60,7 @@ void logAndAdd(T&& name)                            // 到全局的数据结构�
 
 是的，我知道，“废话少说，让我看代码！”，没问题。这里给出更新后的logAndAdd，这是一个几乎正确的版本：
 
-```
+```cpp
 template<typename T>
 void logAndAdd(T&& name)
 {
@@ -72,7 +72,7 @@ void logAndAdd(T&& name)
 
 认识问题的过程就相当于在解决问题了，因为便利的C++标准库已经有type trait（看Item 9）了，std::remove_reference既做了它的名字要做的事情，也做了我们所希望的事情：把一个类型的引用属性给去掉。因此logAndAdd的正确写法是：
 
-```
+```cpp
 template<typename T>
 void logAndAdd(T&& name)
 {
@@ -86,7 +86,7 @@ void logAndAdd(T&& name)
 
 处理完这些household，我们能把我们的注意力转移到函数在被调用的时候了，就是logAndAddImpl。这里有两个重载，第一个重载只能用在非整型变量上（也就是std::is_integral<typename std::remove_reference<T>::type>会返回false的类型）：
 
-```
+```cpp
 template<typename T>
 void logAndAddImpl(T&& name, std::false_type)       // 非整型参数：把它添加
 {                                                   // 到全局的数据结构中去
@@ -98,7 +98,7 @@ void logAndAddImpl(T&& name, std::false_type)       // 非整型参数：把它�
 一旦你理解了隐藏在std::false_type背后的原理，这样的代码就显得很直接了。概念上来讲logAndAdd传了一个布尔值给logAndAddImpl，用这个布尔值来标明传给logAndAdd的类型是不是一个整型，但是true和false是运行期的值，而我们需要靠重载决议（这是一个编译期的场景）来选择正确的logAndAddImpl。这意味着我们需要一个和true相一致的类型以及另外一个和false相一致的类型。这样的需求足够普遍，因此标准库为我们提供了std::true_type和std::false_type。通过logAndAdd传给logAndAddImpl的参数是一个对象，如果T是整型的话，这个对象就继承自std::true_type，否则这个对象就继承自std::false_type。最后我们得到的结果就是，当调用logAndAdd时，只有当T不是整型时，我们实现的这个logAndAddImpl重载才是重载决议的候选对象。
 
 第二个重载则覆盖了相反的情况：当T是一个整型时。在这种情况下，logAndAddImpl简单地找到相应下标下的name，然后把name传回给logAndAdd： 
-```
+```cpp
 std::string nameFromIdx(int idx); // 和Item 26中一样 
 void logAndAddImpl(int idx, std::true_type) // 整型参数：查找name， 
 { // 并且用来调用logAndAdd 
@@ -124,7 +124,7 @@ std::enable_if让你能强制编译器表现得好像一些特殊的模板不存
 
 想要表达这个想法不是很困难，但是我们却不知道具体语法，尤其是你之前没见过的话，所以我会简单地向你介绍一下。std::enable_if的条件部分还不是很明确，所以我们会从它开始。在我们给出的Person中有一个完美转发构造函数的声明，和例子一样，std::enable_if用起来很简单。我只给你展现了这个构造函数的声明，因为std::enable_if在函数的实现中没有作用。实现还是和Item 26中的实现一样。
 
-```
+```cpp
 calss Person {
 public:
     template<typename T,
@@ -137,7 +137,7 @@ public:
 
 我们想要明确的条件是T不是Person，也就是说，只有当T是除了Person以外的类型时，模板化的构造函数才是有效的。多亏了type trait（std::is_same），我们能判断两个类型是否相同，看起来，我们想要的条件是!std::is_same<Person, T>::value。（注意，表达式最前面的”!”。我们想要的是Person和T是不同的）这和我们想要的很接近了，但是还有点不对，因为，就像Item 28解释的那样，用左值初始化时，对universal引用的类型推导总是一个左值引用。这意味着像下面这样的代码，
 
-```
+```cpp
 Person p("Nancy");
 
 

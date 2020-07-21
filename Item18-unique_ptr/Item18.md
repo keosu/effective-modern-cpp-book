@@ -9,7 +9,7 @@ http://blog.csdn.net/boydfd/article/details/50637260
 std::unique_ptr表现出独占所有权的语义。一个非空的std::unique_ptr总是对它指向的资源拥有所有权。move一个std::unique_ptr将把所有权从源指针转交给目标指针（源指针将被设置为null）。拷贝一个std::unique_ptr是不被允许的，因为如果你拷贝一个std::unique_ptr，你将得到两个std::unique_ptr指向同样的资源，然后这两个指针都认为它们拥有资源（因此应该释放资源）。因此std::unique_ptr是一个move-only（只能进行move操作的）类型。再看看资源的销毁，一个非空的std::unique_ptr销毁它的资源。默认情况下，通过在std::unique_ptr中delete一个原始指针的方法来进行资源的销毁。
 
 std::unique_ptr的常用方法是作为一个工厂函数的返回类型（指向类层次中的对象），假设我们有一个投资类型的类层次（比如，股票，债券，不动产等等），这个类层次的基类是Investment。
-```
+```cpp
 class Investment{ ... };
 
 class Stock:
@@ -23,7 +23,7 @@ class RealRstate:
 ```
 对于这样的类层次，一个工厂函数常常会在堆上分配一个对象，并且返回一个指向这个对象的指针，当这个对象不再需要被使用的时候，调用者有责任销毁这个对象。这完全符合std::unique_ptr的概念，因为调用者要对工厂返回的资源负责（也就是，它独占了所有权），然后当std::unique_ptr被销毁的时候，std::unique_ptr会自动销毁它指向的对象。对于Investment类层次，一个工厂函数能被声明成这样：
 
-```
+```cpp
 template<typename... Ts>            //通过给定的参数，创建一个对象
 std::unique_ptr<Investment>         //然后，返回一个这个对象
 makeInvestment(Ts&&... params);     //的std::unique_ptr
@@ -42,7 +42,7 @@ makeInvestment(Ts&&... params);     //的std::unique_ptr
 
 默认情况下，销毁是通过delete进行的，但是，在销毁的时候，std::unique_ptr对象能调用自定义的deleter（销毁函数）：当资源需要被销毁的时候，任意的自定义函数（或仿函数，包括通过lambda表达式产生的仿函数）将被调用。如果由makeInvestment创造的对象不应该直接delete，而是需要先写下日志记录，makeInvestment能被实现成下面这样（代码后面跟着注释，所以如果你看到一些不明确的代码，不需要担心）
 
-```
+```cpp
 //自定义deleter（一个lambda表达式）
 auto delInvmt = [](Investment* pInvestment)
                 {
@@ -89,7 +89,7 @@ makeInvestment最基本的策略是要创造一个null std::unique_ptr，然后�
 
 自定义deleter需要一个`Investment*`类型的参数。不管makeInvestment中创造的对象的真正类型是什么（也就是，Stock，Bond或者RealEstate），它最终都能在lambda表达式中，作为一个`Investment*`对象被delete掉。这意味着我们将通过一个基类指针delete一个派生类对象。为了让这正常工作，基类（Investment）必须要有一个virutal析构函数:
 
-```
+```cpp
 class Investment {
 public:
     ...
@@ -99,7 +99,7 @@ public:
 ```
 在C++14中，由于函数返回值类型推导规则（看Item 3）的存在，意味着makeInvestment能被实现成更加简洁以及更加封装的方式：
 
-```
+```cpp
 /*
  译注：对于封装来说，由于前面的形式必须要先知道delInvmt的实例才能
  调用decltype(delInvmt)来确定它的类型，并且这个类型是只有编译器知
@@ -140,7 +140,7 @@ auto makeInvestment(Ts&&... params)         //使用auto推导返回值类型
 ```
 我在之前就说过，当使用默认deleter（也就是，delete）时，你能合理地假设std::unique_ptr对象和原始指针的大小是一样。当自定义deleter参合进来时，情况也许就不是这样了。当deleter是函数指针的时候，通常会造成std::unique_ptr的大小从1个字节增加到2个字节（32位的情况下）。对于仿函数deleter，变化的大小依赖于仿函数中存储的状态有多少。没有状态的仿函数（比如，不捕获变量的lambda表达式）遭受的大小的惩罚是0（不会改变大小），这意味着当自定义deleter能被实现为函数或lambda表达式时，lambda是更好的选择：
 
-```
+```cpp
 auto delInvmt1 = [](Investment* pInvestment)
                 {
                     makeLogEntry(pInvestment);
@@ -177,7 +177,7 @@ std::unique_ptr数组的存在应该只能作为你感兴趣的技术，因为�
 
 std::unique_ptr是在C++11中表达独占所有权的方式，但是它最吸引人的特性是，它能简单并高效地转换到std::shared_ptr：
 
-```
+```cpp
 std::share_ptr<Investment> sp =         //从std::unique_ptr转换
     makeInvestment( arguments );        //到std::shared_ptr
 ```

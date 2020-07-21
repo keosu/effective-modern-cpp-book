@@ -8,21 +8,21 @@ http://www.cnblogs.com/boydfd/p/4981504.html
 
 ## 好用的花括号
 从不同的角度来看，在C++11中，对象初始化拥有多种语法选择，这体现了语法丰富造成的尴尬或者烂摊子。一般情况下，初始化的值可以用圆括号，等号，花括号来确定：
-```
+```cpp
 int x(0);	//用圆括号初始化 
 int y = 0;	//用"="初始化 
 int z{ 0 };	//用花括号初始化
 ```
 在很多情况下，也可以使用等号加花括号的形式：
 
-```
+```cpp
 int z = { 0 }; 	//用"="和花括号初始化
 ```
 在这个Item中，对于剩下的这种情况我通常忽略“等号加花括号”的语法，因为C++通常把它和“只使用花括号”的情况同样对待。
 
 ”烂摊子“指的是使用等号来初始化常常误导C++初学者，这里发生了赋值操作（尽管不是这样的）。对于built-in类型比如int，只是学术上的不同，但是对于user-defined类型，把初始化和赋值区分开来很重要，因为它们涉及不同的函数：
 
-```
+```cpp
 Widget w1;	//调用默认构造函数
 
 Widget w2 ＝ w1;	//不是赋值，调用拷贝构造函数, 如果w1/w2类型不一致，这里有隐式类型转化
@@ -35,12 +35,12 @@ w1 = w2;	//是赋值，调用operator=
 
 花括号初始化让你做到之前你做不到的事，使用花括号，明确容器的初始内容是很简单的：
 
-```
+```cpp
 std::vector<int> v{ 1, 3, 5};	//v的初始内容是1，3，5
 ```
 花括号同样可以用来明确non-static成员变量的初始值。这是C++11的新能力，也能用”=“初始化语法做到，但是不能用圆括号做到：
 
-```
+```cpp
 class Widget{
 	...
 
@@ -51,7 +51,7 @@ private:
 ```
 另外，不能拷贝的对象（比如，std::atomics---看 Item 40）能用花括号和圆括号初始化，但是不能用”=“初始化：
 
-```
+```cpp
 std::atomic<int> ai1{ 0 };	//对的
 
 std::atomic<int> ai2(0);	//对的
@@ -62,7 +62,7 @@ std::atomic<int> ai3 = 0;	//错误
 
 花括号初始化有一个新奇的特性，它阻止在built-in类型中的隐式收缩转换（narrowing conversation）。如果表达式的值不能保证被初始化对象表现出来，代码将无法通过编译：
 
-```
+```cpp
 double x, y, z;
 
 ...
@@ -71,25 +71,25 @@ int sum1{ x + y + z };	//错误！doubles的和不能表现为int
 ```
 用圆括号和”=“初始化不会检查收缩转换（narrowing conversation），因为这么做的话，会让历史遗留的代码无法使用：
 
-```
+```cpp
 int sum2(x + y + z);	//可以（表达式的值被截断为int）
 
 int sum3 = x + y + z;	//同上
 ```
 花括号初始化的另外一个值得一谈的特性是它能避免C最令人恼火的解析。一方面，C的规则中，所有能被解释为声明的东西肯定会被解释为声明，最令人恼火的解析常常折磨开发者，当开发者想用默认构造函数构造一个对象时，他常常会不小心声明了一个函数。问题的根本就是你想使用一个参数调用一个构造函数，你能这么做：
 
-```
+```cpp
 Widget w1(10);	//使用参数10调用Widget的构造函数
 ```
 但是如果你使用类似的语法，尝试使用0个参数调用Widget的构造函数，你会声明一个函数，而不是一个对象：
 
-```
+```cpp
 Widget w2();	//最令人恼火的解析！声明一个
 				//名字是w2返回Widget的函数
 ```
 函数不能使用花括号作为参数列表来声明，所以使用花括号调用默认构造函数构造一个对象不会有这样的问题：
 
-```
+```cpp
 Widget w3{};	//不带参数调用Widget的默认构造函数
 ```
 
@@ -102,7 +102,7 @@ Widget w3{};	//不带参数调用Widget的默认构造函数
 
 在调用构造函数时，圆括号和花括号是一样的, 只要参数不涉及std::initializer_list：
 
-```
+```cpp
 class Widget{
 public:
 	Widget(int i, bool b);		//不声明带std::initializer_list
@@ -120,7 +120,7 @@ Widget w4{10, 5.0};			//也调用第二个构造函数
 ```
 但是，如果一个或更多个构造函数声明了一个类型为std::initializer_list的参数，使用花括号初始化语法将强烈地偏向于调用带std::initializer_list参数的函数。强烈意味着，当使用花括号初始化语法时，编译器只要有任何机会能调用带std::initializer_list参数的构造函数，编译器就会采用这种解释。举个例子，如果上面Widget类增加一个带std::initializer_list参数的构造函数：
 
-```
+```cpp
 class Widget {
 public:
 	Widget(int i, bool b);	
@@ -132,7 +132,7 @@ public:
 ```
 尽管std::initializer_list元素的类型是long double，Widget w2和w4还将使用新的构造函数来构造对象，比起non-std::initializer_list构造函数，两个参数都是更加糟糕的匹配。看：
 
-```
+```cpp
 Widget w1(10, true); 	//使用圆括号，和以前一样，调用
 						//第一个构造函数
 
@@ -149,7 +149,7 @@ Widget w4{10, 5.0};		//使用花括号，但是现在调用
 ```
 甚至普通的拷贝和移动构造函数也会被std::initializer_list构造函数所劫持：
 
-```
+```cpp
 class Widget {
 public:
 	Widget(int i, bool b);	
@@ -175,7 +175,7 @@ Widget w8{std::move(w4)};	//使用花括号，调用
 ```
 编译器使用带std::initializer_list参数的构造函数来匹配花括号初始化的决心如此之强，就算最符合的std::initializer_list构造函数不能调用，它还是能胜出。举个例子：
 
-```
+```cpp
 class Widget {
 public:
 	Widget(int i, bool b);	
@@ -192,7 +192,7 @@ Widget w{10, 5.0};	//错误！需要收缩转换（narrowing conversion）
 
 在花括号初始化中，只有当这里没有办法转换参数的类型为std::initializer_list时，编译器才会回到正常的重载解析。举个例子，如果我们把stdinitializer_list构造函数替换为带stdinitializer_liststd::string参数的构造函数，non-std::initializer_list构造函数才能重新成为候选人，因为这里没有任何办法把bools转换为std::string：
 
-```
+```cpp
 class Widget {
 public:
 	Widget(int i, bool b);	
@@ -219,7 +219,7 @@ Widget w4{10, 5.0};		//使用花括号，现在调用第二个构造函数
 
 规则是你会得到默认构造函数，空的花括号意味着没有参数，不是一个空的std::initializer_list：
 
-```
+```cpp
 class Widget {
 public:
 	Widget();		//默认构造函数
@@ -238,7 +238,7 @@ Widget w3();	//最令人恼火的解析！声明一个函数！
 ```
 如果你想使用元素为空的std::initializer_list来调用一个std::initializer_list函数，你需要用空的花括号作为参数来调用---把空的花括号放在圆括号或者花括号中间：
 
-```
+```cpp
 Widget w4({});		//使用空的list调用
 					//std::initializer_list构造函数
 
@@ -248,7 +248,7 @@ Widget w5{{}};		//同上
 ## vector的麻烦
 在这种情况下，看起来很神秘的大括号初始化，std::initializer_list，和构造函数重载等东西在你脑袋中旋转，你可能会担心，在日常编程中这些信息会造成多大的麻烦。比你想的更多，因为一个直接被影响的class就是std::vector。std::vector有一个non-std::initializer_list构造函数允许你明确初始的容器大小以及每个元素的初始值，但是它也有一个std::initializer_list构造函数允许你明确初始的容器值。如果你创建一个数值类型的std::vector（比如**std::vector **）并且传入两个参数给构造函数，根据你使用的是圆括号或者花括号，会造成很大的不同：
 
-```
+```cpp
 std::vector<int> v1(10, 20);	//使用non-std::initializer_list
 								//构造函数，创建一个10元素的
 								//std::vector，所有元素的值都是20
@@ -266,7 +266,7 @@ std::vector<int> v2{10, 20};	//使用std::initializer_list
 
 如果你是template的作者，在创建对象时选择使用圆括号还是花括号时会尤其沮丧，因为通常来说，这里有没办法知道哪一种会被使用。举个例子，假设你要创建一个对象使用任意类型任意数量的参数。一个概念上的可变参的template看起来像这样：
 
-```
+```cpp
 template<typename T, 		//对象的类型是T
 		 typename...Ts>		//参数的类型
 void doSomeWork(TS&&... params)
@@ -278,14 +278,14 @@ void doSomeWork(TS&&... params)
 ```
 这里有两种形式把伪代码转换成真正的代码（要知道std::forward的信息，请看Item 25）：
 
-```
+```cpp
 T localObject(std::forward<Ts>(params)...);	//使用圆括号
 
 T localObject{std::forward<Ts>(params)...};	//使用花括号
 ```
 所以考虑下面的代码：
 
-```
+```cpp
 std::vector<int> v;
 ...
 doSomeWork<std::vector<int>>(10, 20);
