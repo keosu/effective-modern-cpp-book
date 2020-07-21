@@ -1,5 +1,5 @@
 
-* Effective C++
+Effective C++
 * [01-template_deduction](Item01-template_deduction/Item01.md)
 * [02-auto_deduction](Item02-auto_deduction/Item02.md)
 * [03-decltype](Item03-decltype/Item03.md)
